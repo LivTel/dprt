@@ -1,4 +1,4 @@
-# $Header: /space/home/eng/cjm/cvs/dprt/latex/Makefile,v 0.3 1999-12-10 12:26:02 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/latex/Makefile,v 0.4 2000-10-03 16:44:33 cjm Exp $
 
 include ../../Makefile.common
 include ../Makefile.common
@@ -27,7 +27,7 @@ $(DVIOBJS): $(TEXSRCS) $(EPSOBJS)
 	$(LATEX) $<
 
 %.eps: %.fig
-	$(FIG2DEV) -L ps $< $@
+	$(FIG2DEV) $(FIG2DEV_OPTIONS) $< $@
 
 depend:
 	echo "NO depend rule for latex files."
@@ -49,6 +49,9 @@ checkout:
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.3  1999/12/10 12:26:02  cjm
+# Added backup target.
+#
 # Revision 0.2  1999/09/08 13:59:10  cjm
 # Changed checkin target to use CI_OPTIONS.
 #
