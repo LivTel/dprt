@@ -1,5 +1,5 @@
 // DpRt.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.12 2004-04-15 11:16:26 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.13 2004-04-15 14:07:20 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -15,14 +15,14 @@ import ngat.util.logging.*;
 /**
  * This class is the start point for the Data Pipeline (Real Time Module).
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.12 $
+ * @version $Revision: 0.13 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.12 2004-04-15 11:16:26 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.13 2004-04-15 14:07:20 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -204,7 +204,7 @@ public class DpRt
 
 	/**
 	 * Initialise log handlers. Called from init only, not re-configured on a REDATUM level reboot.
-	 * The libdprt instance handlers are copied using the <i>dprt.dprtlibrary.implmentation</i> property
+	 * The libdprt instance handlers are copied using the <i>dprt.dprtlibrary.implementation</i> property
 	 * to get the classname of the logger to copy to. This means the <b>status</b> object must exist.
 	 * @see #status
 	 * @see #init
@@ -231,7 +231,7 @@ public class DpRt
 		logFilter = new BitFieldLogFilter(status.getLogLevel());
 		logLogger.setFilter(logFilter);
 	// DpRtLibrary logging logger
-		copyLogHandlers(logLogger,LogManager.getLogger(status.getProperty("dprt.dprtlibrary.implmentation")),
+		copyLogHandlers(logLogger,LogManager.getLogger(status.getProperty("dprt.dprtlibrary.implementation")),
 				logFilter);
 	}
 
@@ -802,6 +802,9 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.12  2004/04/15 11:16:26  cjm
+// Fixed dprt.dprtlibrary.implementation name (added 'e').
+//
 // Revision 0.11  2004/03/31 08:40:01  cjm
 // Repackaged into ngat.dprt.
 // libdprt now a DpRtLibraryInterface.
