@@ -1,5 +1,5 @@
-// DpRtTCPServerConnectionThread.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.7 2001-03-09 17:44:53 cjm Exp $
+// DpRtTCPServerConnectionThread.java
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.8 2002-11-26 18:49:10 cjm Exp $
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -11,15 +11,15 @@ import ngat.message.INST_DP.*;
 
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
- * @author Lee Howells
- * @version $Revision: 0.7 $
+ * @author Chris Mottram, LJMU
+ * @version $Revision: 0.8 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.7 2001-03-09 17:44:53 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.8 2002-11-26 18:49:10 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -132,6 +132,14 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 		{
 			milliseconds = 60*1000;
 		}
+		else if((command instanceof MAKE_MASTER_BIAS))
+		{
+			milliseconds = 60*1000;
+		}
+		else if((command instanceof MAKE_MASTER_FLAT))
+		{
+			milliseconds = 60*1000;
+		}
 		else
 		{
 			milliseconds = defaultAcknowledgeTime;
@@ -145,6 +153,12 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 	 * This method overrides the processCommand method in the ngat.net.TCPServerConnectionThread class.
 	 * It is called from the inherited run method. It is responsible for performing the commands
 	 * sent to it by the CCS. It should also construct the done object to describe the results of the command.
+	 * @see DpRtLibrary#DpRtAbort
+	 * @see DpRt#close
+	 * @see DpRtLibrary#DpRtCalibrateReduce
+	 * @see DpRtLibrary#DpRtExposeReduce
+	 * @see DpRtLibrary#DpRtMakeMasterBias
+	 * @see DpRtREBOOTQuitThread
 	 */
 	protected void processCommand()
 	{
@@ -272,6 +286,38 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 					exposeReduceDone.getErrorNum()+":"+exposeReduceDone.getErrorString());
 			}
 		}
+		if(command instanceof MAKE_MASTER_BIAS)
+		{
+			MAKE_MASTER_BIAS makeMasterBiasCommand = (MAKE_MASTER_BIAS)command;
+			MAKE_MASTER_BIAS_DONE makeMasterBiasDone = new MAKE_MASTER_BIAS_DONE(command.getId());
+
+			done = makeMasterBiasDone;
+			if(testAbort() == true)
+				return;
+			dprt.getDpRtLibrary().DpRtMakeMasterBias(makeMasterBiasCommand.getDirname(),
+					makeMasterBiasDone);
+			if(makeMasterBiasDone.getSuccessful() == false)
+			{
+				dprt.error(this.getClass().getName()+":run:"+command.getClass().getName()+":"+
+					makeMasterBiasDone.getErrorNum()+":"+makeMasterBiasDone.getErrorString());
+			}
+		}
+		if(command instanceof MAKE_MASTER_FLAT)
+		{
+			MAKE_MASTER_FLAT makeMasterFlatCommand = (MAKE_MASTER_FLAT)command;
+			MAKE_MASTER_FLAT_DONE makeMasterFlatDone = new MAKE_MASTER_FLAT_DONE(command.getId());
+
+			done = makeMasterFlatDone;
+			if(testAbort() == true)
+				return;
+			dprt.getDpRtLibrary().DpRtMakeMasterFlat(makeMasterFlatCommand.getDirname(),
+					makeMasterFlatDone);
+			if(makeMasterFlatDone.getSuccessful() == false)
+			{
+				dprt.error(this.getClass().getName()+":run:"+command.getClass().getName()+":"+
+					makeMasterFlatDone.getErrorNum()+":"+makeMasterFlatDone.getErrorString());
+			}
+		}
 		if(!(command instanceof INTERRUPT))
 		{
 			dprt.getStatus().setCurrentThread(null);
@@ -305,6 +351,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.7  2001/03/09 17:44:53  cjm
+// Updated REBOOT return code.
+//
 // Revision 0.6  2000/08/01 14:29:16  cjm
 // Added REBOOT code.
 //
