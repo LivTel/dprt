@@ -1,5 +1,5 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.1 1999-06-24 10:56:30 dev Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.2 1999-06-30 15:39:51 dev Exp $ 
 include ../../Makefile.common
 
 INCDIR = ../include
@@ -44,8 +44,11 @@ clean:
 	$(RM) $(RM_OPTIONS) $(OBJS) $(TIDY_OPTIONS) *.fits
 
 tidy:
-	$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS) *.fits
+	$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS) *.fits dprt_error.txt dprt_log.txt
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.1  1999/06/24 10:56:30  dev
+# initial revision
+#
 #
