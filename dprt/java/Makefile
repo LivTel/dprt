@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/Makefile,v 1.1 2004-03-31 08:49:42 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/Makefile,v 1.2 2004-04-15 13:56:04 cjm Exp $ 
 include ../Makefile.common
 include ../../Makefile.common
 
@@ -11,8 +11,9 @@ JARLIBDIR	= $(LT_BIN_HOME)/javalib
 
 DOCSDIR 	= $(DPRT_DOC_HOME)/javadocs/
 DOCFLAGS 	= -version -author -private
-JAVASRCS 	= ngat/dprt/*.java ngat/dprt/ccs/*.java 
-JAVAPKGS	= ngat.dprt ngat.dprt.ccs
+JAVASRCS 	= ngat/dprt/*.java ngat/dprt/ccs/*.java ngat/dprt/scs/*.java \
+		ngat/dprt/supircam/*.java ngat/dprt/ftspec/*.java 
+JAVAPKGS	= ngat.dprt ngat.dprt.ccs ngat.dprt.scs ngat.dprt.supircam ngat.dprt.ftspec
 JAVADOCS 	= $(JAVASRCS:%.java=$(DOCSDIR)/%.html)
 
 top: dirs javadocs
@@ -75,6 +76,9 @@ backup: checkin
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/03/31 08:49:42  cjm
+# Initial revision
+#
 # Revision 1.1  2004/03/29 11:18:06  cjm
 # Initial revision
 #
