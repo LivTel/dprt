@@ -1,49 +1,84 @@
-# Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.9 2001-05-16 16:15:46 cjm Exp $ 
-include ../../Makefile.common
-include ../Makefile.common
+# Makefile
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.10 2004-03-31 08:49:17 cjm Exp $ 
+include ../../../../Makefile.common
+include ../../../Makefile.common
 
-BINDIR 		= $(DPRT_BIN_HOME)/java
-DOCSDIR 	= $(DPRT_DOC_HOME)/javadocs
+MAKE 		= make
+PACKAGEDIR	= ngat/dprt/
+BINDIR 		= $(DPRT_BIN_HOME)/java/$(PACKAGEDIR)
+CONFIG_BINDIR 	= $(DPRT_BIN_HOME)/java
+DOCSDIR 	= $(DPRT_DOC_HOME)/javadocs/$(PACKAGEDIR)
 DOCFLAGS 	= -version -author -private
-SRCS = DpRtLibrary.java DpRtStatus.java DpRtTCPServer.java DpRtTCPServerConnectionThread.java \
-	DpRtConstants.java DpRt.java DpRtREBOOTQuitThread.java
+SRCS 		= DpRtLibraryInterface.java DpRtLibraryNativeException.java \
+		DpRtStatus.java DpRtTCPServer.java DpRtTCPServerConnectionThread.java \
+		DpRtConstants.java DpRt.java DpRtREBOOTQuitThread.java
 OBJS 		= $(SRCS:%.java=$(BINDIR)/%.class)
 DOCS 		= $(SRCS:%.java=$(DOCSDIR)/%.html)
 
-top: $(OBJS) config docs
+CONFIG_SRCS	= ltccd1.livjm.ac.uk.dprt.properties ltccd2.livjm.ac.uk.dprt.properties \
+		ltccd3.livjm.ac.uk.dprt.properties \
+		ftccd1.livjm.ac.uk.dprt.properties ltobs9.livjm.ac.uk.dprt.properties
+CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
+
+DIRS 		= ccs 
+#scs supircam ftspec
+
+top: $(OBJS) config
+	@for i in $(DIRS); \
+	do \
+		(echo making in $$i...; cd $$i; $(MAKE) ); \
+	done;
 
 $(BINDIR)/%.class:%.java
-	$(JAVAC) $(JAVAC_OPTIONS) -d $(BINDIR) $<
+	$(JAVAC) -sourcepath .:/home/dev/src:$(DPRT_SRC_HOME)/java -classpath \
+		$(DPRT_BIN_HOME)/java:$(CLASSPATH)$(JAVAC_OPTIONS) -d $(DPRT_BIN_HOME)/java $<
 
 DpRtTCPServerConnectionThread.class: DpRtConstants.class
 
-config: $(BINDIR)/dprt.properties
+config: $(CONFIG_OBJS)
 
-$(BINDIR)/dprt.properties: $(HOST).dprt.properties
-	$(CP) $(HOST).dprt.properties $(BINDIR)/dprt.properties
-
-docs: $(DOCS)
-
-$(DOCS): $(SRCS)
-	$(JAVADOC) -d $(DOCSDIR) $(DOCFLAGS) $(SRCS)
+$(CONFIG_BINDIR)/%.properties: %.properties
+	$(CP) $< $@
 
 checkout:
 	$(CO) $(CO_OPTIONS) $(SRCS)
+	@for i in $(DIRS); \
+	do \
+		(echo checkout in $$i...; cd $$i; $(CO) $(CO_OPTIONS) Makefile; $(MAKE) checkout); \
+	done;
 
 checkin:
 	-$(CI) $(CI_OPTIONS) $(SRCS)
+	-@for i in $(DIRS); \
+	do \
+		(echo checkin in $$i...; cd $$i; $(MAKE) checkin; $(CI) $(CI_OPTIONS) Makefile); \
+	done;
 
 clean:
 	-$(RM) $(RM_OPTIONS) $(OBJS) $(TIDY_OPTIONS)
+	@for i in $(DIRS); \
+	do \
+		(echo clean in $$i...; cd $$i; $(MAKE) clean); \
+	done;
 
 tidy:
 	-$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS)
+	@for i in $(DIRS); \
+	do \
+		(echo tidy in $$i...; cd $$i; $(MAKE) tidy); \
+	done;
 
 backup: tidy
+	@for i in $(DIRS); \
+	do \
+		(echo backup in $$i...; cd $$i; $(MAKE) backup); \
+	done;
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.9  2001/05/16 16:15:46  cjm
+# Split into libdprt and dprt project sub-directories.
+#
 # Revision 0.8  2001/03/09 16:22:49  cjm
 # Added DpRtREBOOTQuitThread.java source.
 #
