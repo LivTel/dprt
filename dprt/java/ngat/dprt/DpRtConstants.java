@@ -1,5 +1,5 @@
 // DpRtConstants.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.4 2004-03-31 08:40:01 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.5 2005-03-31 13:19:37 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -8,14 +8,14 @@ import java.io.*;
 /**
  * This class holds some constant values for the DpRt program. Currently, this consists of error codes.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.4 $
+ * @version $Revision: 0.5 $
  */
 public class DpRtConstants
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.4 2004-03-31 08:40:01 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.5 2005-03-31 13:19:37 cjm Exp $");
 
 	/**
 	 * Error code. No error.
@@ -57,11 +57,15 @@ public class DpRtConstants
 	 */
 	public final static int DPRT_LOG_LEVEL_REPLIES 			= (1<<1);
 	/**
+	 * Logging level. Log lock files information.
+	 */
+	public final static int DPRT_LOG_LEVEL_LOCKFILES       		= (1<<2);
+	/**
 	 * Logging level. Log if any logging is turned on.
 	 * Note libdprt_object reserves bits 16-24.
 	 */
 	public final static int DPRT_LOG_LEVEL_ALL 			= (DPRT_LOG_LEVEL_COMMANDS|
-		DPRT_LOG_LEVEL_REPLIES);
+		DPRT_LOG_LEVEL_REPLIES|DPRT_LOG_LEVEL_LOCKFILES);
 	/**
 	 * Logging level used by the error logger. We want to log all errors,
 	 * hence this value should be used for all errors.
@@ -87,6 +91,9 @@ public class DpRtConstants
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.4  2004/03/31 08:40:01  cjm
+// Repackaged into ngat.dprt.
+//
 // Revision 0.3  2004/01/30 17:01:00  cjm
 // Added log levels.
 //
