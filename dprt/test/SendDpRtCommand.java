@@ -1,5 +1,5 @@
-// SendDpRtCommand.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/test/SendDpRtCommand.java,v 1.2 2002-05-20 16:38:37 cjm Exp $
+// SendDpRtCommand.java
+// $Header: /space/home/eng/cjm/cvs/dprt/test/SendDpRtCommand.java,v 1.3 2003-06-06 12:59:31 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -12,7 +12,7 @@ import ngat.util.*;
 /**
  * This class send a DpRt command to the DpRt. 
  * @author Chris Mottram
- * @version $Revision: 1.2 $
+ * @version $Revision: 1.3 $
  */
 public class SendDpRtCommand
 {
@@ -40,17 +40,27 @@ public class SendDpRtCommand
 	 * Type (class) of command that can be sent to the DpRt.
 	 * @see #commandType
 	 */
-	static final int COMMAND_TYPE_ABORT = 3;
+	static final int COMMAND_TYPE_MAKE_MASTER_BIAS = 3;
 	/**
 	 * Type (class) of command that can be sent to the DpRt.
 	 * @see #commandType
 	 */
-	static final int COMMAND_TYPE_REBOOT = 4;
+	static final int COMMAND_TYPE_MAKE_MASTER_FLAT = 4;
 	/**
 	 * Type (class) of command that can be sent to the DpRt.
 	 * @see #commandType
 	 */
-	static final int COMMAND_TYPE_STOP = 5;
+	static final int COMMAND_TYPE_ABORT = 5;
+	/**
+	 * Type (class) of command that can be sent to the DpRt.
+	 * @see #commandType
+	 */
+	static final int COMMAND_TYPE_REBOOT = 6;
+	/**
+	 * Type (class) of command that can be sent to the DpRt.
+	 * @see #commandType
+	 */
+	static final int COMMAND_TYPE_STOP = 7;
 	/**
 	 * The ip address to send the messages to, this should be the machine the DpRt is on.
 	 */
@@ -65,11 +75,14 @@ public class SendDpRtCommand
 	private PrintStream errorStream = System.err;
 	/**
 	 * Which command to send to the DpRt.
-	 * This is one of COMMAND_TYPE_CALIBRATE_REDUCE, COMMAND_TYPE_EXPOSE_REDUCE, COMMAND_TYPE_ABORT,
+	 * This is one of COMMAND_TYPE_CALIBRATE_REDUCE, COMMAND_TYPE_EXPOSE_REDUCE, 
+	 * COMMAND_TYPE_MAKE_MASTER_BIAS, COMMAND_TYPE_MAKE_MASTER_FLAT, COMMAND_TYPE_ABORT,
 	 * COMMAND_TYPE_REBOOT, COMMAND_TYPE_STOP
 	 * Defaults to COMMAND_TYPE_NONE, which should cause this program to return an error.
 	 * @see #COMMAND_TYPE_CALIBRATE_REDUCE
 	 * @see #COMMAND_TYPE_EXPOSE_REDUCE
+	 * @see #COMMAND_TYPE_MAKE_MASTER_BIAS
+	 * @see #COMMAND_TYPE_MAKE_MASTER_FLAT
 	 * @see #COMMAND_TYPE_ABORT
 	 * @see #COMMAND_TYPE_REBOOT
 	 * @see #COMMAND_TYPE_STOP
@@ -80,6 +93,10 @@ public class SendDpRtCommand
 	 * Filename to send to the data pipeline.
 	 */
 	private String filename = null;
+	/**
+	 * Directory name to send to the data pipeline.
+	 */
+	private String dirname = null;
 	/**
 	 * If we are sending a REBOOT command, this defines the level of reboot.
 	 */
@@ -120,6 +137,20 @@ public class SendDpRtCommand
 				exposeReduce = new EXPOSE_REDUCE("SendDpRtCommand");
 				exposeReduce.setFilename(filename);
 				command = (INST_TO_DP)exposeReduce;
+				break;
+			case COMMAND_TYPE_MAKE_MASTER_BIAS:
+				MAKE_MASTER_BIAS makeMasterBias = null;
+
+				makeMasterBias = new MAKE_MASTER_BIAS("SendDpRtCommand");
+				makeMasterBias.setDirname(dirname);
+				command = (INST_TO_DP)makeMasterBias;
+				break;
+			case COMMAND_TYPE_MAKE_MASTER_FLAT:
+				MAKE_MASTER_FLAT makeMasterFlat = null;
+
+				makeMasterFlat = new MAKE_MASTER_FLAT("SendDpRtCommand");
+				makeMasterFlat.setDirname(dirname);
+				command = (INST_TO_DP)makeMasterFlat;
 				break;
 			case COMMAND_TYPE_ABORT:
 				ABORT abortCommand = null;
@@ -231,6 +262,8 @@ public class SendDpRtCommand
 					System.out.println("\tSky Brightness:"+exposeReduceDone.getSkyBrightness());
 					System.out.println("\tSaturated:"+exposeReduceDone.getSaturation());
 				}
+				// No test for MAKE_MASTER_BIAS_DONE and MAKE_MASTER_FLAT_DONE,
+				// they return no extra data.
 				retval = true;
 			}
 			else
@@ -246,6 +279,7 @@ public class SendDpRtCommand
 	/**
 	 * This routine parses arguments passed into SendDpRtCommand.
 	 * @see #commandType
+	 * @see #dirname
 	 * @see #filename
 	 * @see #rebootLevel
 	 * @see #dprtPortNumber
@@ -320,6 +354,28 @@ public class SendDpRtCommand
 				else
 					errorStream.println("-address requires an address");
 			}
+			else if(args[i].equals("-mb")||args[i].equals("-make_master_bias"))
+			{
+				if((i+1)< args.length)
+				{
+					commandType = COMMAND_TYPE_MAKE_MASTER_BIAS;
+					dirname = args[i+1];
+					i++;
+				}
+				else
+					errorStream.println("-make_master_bias requires an argument.");
+			}
+			else if(args[i].equals("-mf")||args[i].equals("-make_master_flat"))
+			{
+				if((i+1)< args.length)
+				{
+					commandType = COMMAND_TYPE_MAKE_MASTER_FLAT;
+					dirname = args[i+1];
+					i++;
+				}
+				else
+					errorStream.println("-make_master_flat requires an argument.");
+			}
 			else if(args[i].equals("-r")||args[i].equals("-reboot"))
 			{
 				if((i+1)< args.length)
@@ -352,6 +408,8 @@ public class SendDpRtCommand
 		System.out.println("\t-d[prtport] <port number> - Port to send commands to.");
 		System.out.println("\t-e[xpose] <filename> - Send expose reduce command.");
 		System.out.println("\t-[ip]|[address] <address> - Address to send commands to.");
+		System.out.println("\t-[make_master_bias]|[mb] <directory> - Send make master bias command.");
+		System.out.println("\t-[make_master_flat]|[mf] <directory> - Send make master flat command.");
 		System.out.println("\t-r[eboot] <level> - Send reboot command.");
 		System.out.println("\t-s[top] - Send stop command.");
 		System.out.println("The default DpRt port is "+DEFAULT_DPRT_PORT_NUMBER+".");
@@ -395,6 +453,9 @@ public class SendDpRtCommand
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.2  2002/05/20 16:38:37  cjm
+// Added extra parameters to EXPOSE_REDUCE_DONE prints.
+//
 // Revision 1.1  2001/08/10 13:06:58  cjm
 // Initial revision
 //
