@@ -1,5 +1,5 @@
 // SendDpRtCommand.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/test/SendDpRtCommand.java,v 1.1 2001-08-10 13:06:58 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/test/SendDpRtCommand.java,v 1.2 2002-05-20 16:38:37 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -12,7 +12,7 @@ import ngat.util.*;
 /**
  * This class send a DpRt command to the DpRt. 
  * @author Chris Mottram
- * @version $Revision: 1.1 $
+ * @version $Revision: 1.2 $
  */
 public class SendDpRtCommand
 {
@@ -227,6 +227,9 @@ public class SendDpRtCommand
 					System.out.println("\tSeeing:"+exposeReduceDone.getSeeing());
 					System.out.println("\tX Pix:"+exposeReduceDone.getXpix());
 					System.out.println("\tY Pix:"+exposeReduceDone.getYpix());
+					System.out.println("\tPhotometricity:"+exposeReduceDone.getPhotometricity());
+					System.out.println("\tSky Brightness:"+exposeReduceDone.getSkyBrightness());
+					System.out.println("\tSaturated:"+exposeReduceDone.getSaturation());
 				}
 				retval = true;
 			}
@@ -392,4 +395,7 @@ public class SendDpRtCommand
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.1  2001/08/10 13:06:58  cjm
+// Initial revision
+//
 //
