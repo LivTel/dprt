@@ -28,6 +28,7 @@ of how the system communicates with the CCS. It does not discuss the actual data
 0.2 & C. J. Mottram & 02/08/99 & Changes due to ltccd1 being development machine. \\
 0.3 & C. J. Mottram & 31/08/99 & Changes to references - now on ltccd1. \\
 0.4 & C. J. Mottram & 15/05/01 & Split DpRt into Java and C sub-systems for easier source management. \\
+0.5 & C. J. Mottram & 26/11/02 & Added information about linking to librjs\_dprt. \\
 \hline
 \end{tabular}
 \end{center}
@@ -193,9 +194,10 @@ Java Native routines call to link to the C library.
 \subsubsection{DpRtLibrary}
 This the module that implements the native methods in the {\em DpRtLibrary} class. The header file for this 
 module (in the {\em include} directory) is machine generated using the {\em javah} command on the class file. 
-The module calls various JNI C routines (defined in the {\em \verb'<'jni.h\verb'>'} header file) to transfer the Java method
-parameters into C type equivalents. The relevant C API routine (defined in {\em ``dprt.h''}) is called to
-do the reduction, and the results from this call are put into the DONE object. 
+The module calls various JNI C routines (defined in the {\em \verb'<'jni.h\verb'>'} header file) to 
+transfer the Java method parameters into C type equivalents. 
+The relevant C API routine (defined in {\em ``dprt.h''}) is called to
+do the reduction (or a fake implementation), and the results from this call are put into the DONE object. 
 
 Note there are problems compiling this module with the ANSI C compiler flags set. This is because the Java
 header file {\em \verb'<'jni.h\verb'>'} does not conform to ANSI C.
@@ -205,17 +207,54 @@ This is the top level file with the C API for the data reduction routines in it.
 prototypes are declared in the header file (in the {\em include} directory) and the code is actually in the
 {\em c} directory. 
 
-There are two routine for reduction at the moment, one for calibration images and one for
-exposure images, which return different parameters. These routines are largely unimplemented at the moment.
+This module provides some fake implementation for some reduction operations, allowing us to use the data
+pipeline when testing the CCD off sky. Depending on the dprt's configuration, the real reduction routine
+can be called, which is actually implemented in the {\em librjs\_dprt} library \cite{bib:rtp}.
+
+The following reduction routines are present:
+\begin{itemize}
+\item {\bf DpRt\_Initialise}. This is called when the DpRt starts up. Sets up the property function pointers,
+	if not already set by the JNI layer. If the property {\em dprt.fake} is {\bf FALSE}, the {\em librjs\_dprt}
+	routine {\bf dprt\_init} is called.
+\item {\bf DpRt\_Shutdown}. This is called when the DpRt is about to shutdown. 
+	If the property {\em dprt.fake} is {\bf FALSE}, the {\em librjs\_dprt}
+	routine {\bf dprt\_close\_down} is called.
+\item {\bf DpRt\_Calibrate\_Reduce}. This is called when a calibration frame needs to be reduced. 
+	If the property {\em dprt.fake} is {\bf TRUE}, {\bf Calibrate\_Reduce\_Fake} is called to fake some
+	return data. 
+	If the property {\em dprt.fake} is {\bf FALSE}, the {\em librjs\_dprt} routine {\bf dprt\_process} is called
+	with run mode {\bf QUICK\_REDUCTION}.
+\item {\bf DpRt\_Expose\_Reduce}. This is called when a science frame needs reducing.
+	If the property {\em dprt.fake} is {\bf TRUE}, {\bf Expose\_Reduce\_Fake} is called to fake some return data. 
+	If the property {\em dprt.fake} is {\bf FALSE}, the {\em librjs\_dprt} routine {\bf dprt\_process} is called
+	with run mode {\bf QUICK\_REDUCTION}.
+\item {\bf DpRt\_Make\_Master\_Bias}. This is called at the end of taking daylight calibrations (bias and dark frames).
+	If the property {\em dprt.fake} is {\bf TRUE}, nothing is done (the routine pretends to succeed).
+	If the property {\em dprt.fake} is {\bf FALSE}, the property {\em dprt.make\_master\_bias} is checked.
+	If {\em dprt.make\_master\_bias} is {\bf TRUE}, the {\em librjs\_dprt} routine {\bf dprt\_process} is called
+	with run mode {\bf MAKE\_BIAS}, otherwise the routine just returns success.
+\item {\bf DpRt\_Make\_Master\_Flat}. This is called at the end of taking twilight calibrations (flat fields).
+	If the property {\em dprt.fake} is {\bf TRUE}, nothing is done (the routine pretends to succeed).
+	If the property {\em dprt.fake} is {\bf FALSE}, the property {\em dprt.make\_master\_flat} is checked.
+	If {\em dprt.make\_master\_flat} is {\bf TRUE}, the {\em librjs\_dprt} routine {\bf dprt\_process} is called
+	with run mode {\bf MAKE\_FLAT}, otherwise the routine just returns success.
+\item {\bf DpRt\_Set\_Abort}. This sets the abort flag. This should abort any processing, but doesn't at the moment.
+\end{itemize}
+There are also various routines for getting strings, doubles, integers and booleans out of the Java property
+files. This can be whether the library is running under a JVM or not, using JNI if running under Java
+and stdio if not (useful for C test programs).
 
 The return filename needs to be allocated, this enables
 it to be any length. During processing the abort flag must be regularly checked to ensure another thread
-has no received an ABORT message and wants this reduction to stop.
+has no received an ABORT message and wants this reduction to stop. The {\em librjs\_dprt} library does
+not yet have the functionality to support these operations yet.
 
 If an error occurs during the execution of a reduction, the {\em DpRt\_Error\_Number} and {\em DpRt\_Error\_String}
 should be filled with suitable values to indicate the cause of the problem. These values are picked up
 by the Java layer for the DONE message. If a reduction fails the routine should return FALSE to
-set the DONE objects successful flag to FALSE.
+set the DONE objects successful flag to FALSE. When a {\em librjs\_dprt} routine fails, we detect this
+and copy the {\bf dprt\_err\_int} and {\bf dprt\_err\_str} variables from {\em librjs\_dprt} into 
+{\em DpRt\_Error\_Number} and {\em DpRt\_Error\_String}.
 
 \section{Directory Structure}
 The current prototype is located in two sub-system directories.
@@ -257,8 +296,9 @@ backup tar file. Most targets are achieved by calling Makefiles in each of the s
 
 \subsection{libdprt Directory Contents}
 \begin{itemize}
-\item {\bf c} This contains the C library source code to build {\em libdprt}, the C library that actually does the
-data reduction. The Java class {\em DpRtLibrary} picks up the shared version of this library to do the reduction.
+\item {\bf c} This contains the C library source code to build {\em libdprt}, the C library that calls the routine
+to actually do the data reduction. 
+The Java class {\em DpRtLibrary} picks up the shared version of this library to do the reduction.
 The test program {\em dprt\_test} links against the library.
 \item {\bf include} This contains the C library headers that declare the external routines in {\em libdprt}.
 \item {\bf test} Contains the C code to build {\em dprt\_test}, a C test program to test data reduction in 
@@ -268,6 +308,8 @@ deliverables in this directory, for checking in  and out the source code in each
 backup tar file. Most targets are achieved by calling Makefiles in each of the sub-directories that contain code.
 \item {\bf cdocs} The generated API documentation from the {\em c} directory is put into this directory. The
 documentation is generated when {\em libdprt} is built using the {\em cdoc} tool.
+\item {\bf rjs} This contains the C library source code to build {\em librjs\_dprt}, the C library
+{\em libdprt} links to that actually does the data reduction.
 \item {\bf README} Text file reminding us what is contained in this directory.
 \end{itemize}
 
@@ -346,6 +388,9 @@ directories to build targets & top, checkin, checkout, clean, tidy, backup \\ \h
 for the headers in the include directory & top, static, staticdepend, depend, lint, checkin, 
 checkout, clean, tidy \footnotemark[3] \\ \hline
 
+\verb'$(LT_SRC_HOME)'/libdprt/rjs/Makefile& Makefile for librjs\_dprt c library, must be called separately. & shared (top) \\ \hline
+
+
 \verb'$(LT_SRC_HOME)'/libdprt/test/Makefile& Makes the test programs & top, depend, clean, checkin, checkout\\ \hline
 \end{tabular}
 \end{footnotesize}
@@ -356,6 +401,8 @@ checkout, clean, tidy \footnotemark[3] \\ \hline
 \footnotetext[3]{The {\em top} target only builds the shared library by default, use {\em make static} to build
 a statically linked library. The {\em top} target also creates the machine generated header file 
 {\em ~/dprt/include/DpRtLibrary.h}, using the {\em javah} tool on the {\em DpRtLibrary.java} file.}
+
+Note the rjs directory must be compiled separately from the main compilation. See \cite{bib:rtp}.
 
 \subsubsection{Common Makefile Targets}
 When {\em make} is invoked, it searches for a {\em Makefile} in the current directory. If one is found, it
@@ -435,9 +482,11 @@ tests the C API. The other if DpRt, a Java class that starts up a server waiting
 This executable is in the dprt/test directory. It is run by just typing {\em dprt\_test} in this directory.
 Specifying no parameters or typing {\em dprt\_test -help} gives the parameter information reproduced below:
 \begin{verbatim}
-dprt_test [-c] [-e] [-help] <filename>
+dprt_test [-b] [-c] [-e] [-f] [-help] <filename>
+-b creates a master bias frame from biases in the directory specified in filename.
 -c reduces the filename as a calibration image.
 -e reduces the filename as a expose image.
+-f creates a master flat frame from fields in the directory specified in filename.
 -help prints this help message and exits.
 You must always specify a filename to reduce.
 \end{verbatim}
@@ -464,6 +513,38 @@ You then need to run the client program to call the DpRt server. Currently the C
 calls the DpRt for data processing, there will be a SendCCSCommandFile in the test directory that will
 impersonate the CCS eventually (as per the SendISSCommandFile program in the ccs/test directory \cite{bib:ccs}).
 
+\section{Configuration file}
+When running, the DpRt reads configuration information from a Java property file. The default location for
+this is {\em ./dprt.properties}. The file format is the standard Java property file format, and
+the properties (and their values) that should be contained in the file are described in 
+Table \ref{tab:configproperties}.
+
+\begin{table}[!h]
+\begin{center}
+\begin{footnotesize}
+\begin{tabular}{|p{12em}|l|l|p{28em}|} \hline
+{\bf Property Name} 	& {\bf Value Type} & {\bf Example Value} & {\bf Description}\\ \hline
+dprt.net. default\_DPRT\_port\_number 		& int & 6880 & Port number DpRt listens on. \\ \hline
+dprt.thread\_monitor. update\_time 		& int (ms) & 1000 & How often to update the thread monitor. \\ \hline
+dprt.server\_connection. default\_acknowledge\_time & int (ms) & 60000 & How long to tell the client to wait for the command to complete - by default. \\ \hline
+dprt.file.error 				& string & ./dprt\_error.txt & The filename to write error messages to. \\ \hline
+dprt.file.log 					& string & ./dprt\_log.txt & The filename to write log messages to. \\ \hline
+dprt.fake 					& bool & true & Call the real pipeline, or fake the results. \\ \hline
+dprt.full\_reduction 				& bool & false & Whether to force full reduction of calibration/science frames (writing to disc). \\ \hline
+dprt.make\_master\_bias 			& bool & true & If calling the real pipeline, whether to really call the master bias routine when asked. \\ \hline
+dprt.make\_master\_flat 			& bool & false & If calling the real pipeline, whether to really call the master flat routine when asked. \\ \hline
+dprt.telfocus.best\_focus 			& double & 13.5e-6 & Parameter to fake seeing return value for focus images. \\ \hline
+dprt.telfocus. atmospheric\_seeing 		& double & 0.3 & Parameter to fake seeing return value for focus images. \\ \hline
+dprt.telfocus. atmospheric\_variation	 	& double & 0.5 & Parameter to fake seeing return value for focus images. \\ \hline
+dprt.telfocus.fwhm\_per\_mm 			& double & 10 & Parameter to fake seeing return value for focus images. \\ \hline
+\end{tabular}
+\end{footnotesize}
+\end{center}
+\caption{\em Table of configuration properties.}
+\label{tab:configproperties} 
+\end{table}
+
+
 \section{Conventions/Abbreviations}
 \begin{center}
 \begin{tabular}{|l|l|p{25em}|}
@@ -484,12 +565,14 @@ ensuring only one person can edit a source file at a time. Type {\em man rcsintr
 
 \begin{thebibliography}{99}
 \addcontentsline{toc}{section}{Bibliography}
+\bibitem{bib:rtp}{\bf Real-time Pipeline}
+R. J. Smith. {\em http://ltccd1.livjm.ac.uk/\verb'~'dev/dprt/latex/lt\_dprt.ps}
 \bibitem{bib:ltpf}{\bf Liverpool Telescope Pipeline Flow}
 Lee Howells.
 \bibitem{bib:drpl}{\bf Data Reduction Pipe-Line}
 Lee Howells.
 \bibitem{bib:jnitut}{\bf Java Native Interface}
-Sun Microsystems 
+Sun Micro-systems 
 {\em http://java.sun.com/docs/books/tutorial/native1.1/index.html}
 \bibitem{bib:jmsnnp}{\bf Java Message System: ngat.net package}
 C. J. Mottram {\em http://ltccd1.livjm.ac.uk/\verb'~'dev/ngat/latex/ngat.net.ps}
