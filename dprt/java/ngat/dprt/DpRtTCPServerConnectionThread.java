@@ -1,5 +1,5 @@
 // DpRtTCPServerConnectionThread.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.5 1999-11-01 14:31:59 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.6 2000-08-01 14:29:16 cjm Exp $
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -12,14 +12,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Lee Howells
- * @version $Revision: 0.5 $
+ * @version $Revision: 0.6 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.5 1999-11-01 14:31:59 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.6 2000-08-01 14:29:16 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -84,7 +84,7 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 	 * This method is called after the clients command is read over the socket. It allows us to
 	 * initialise this threads response to a command. This method changes the threads priority now 
 	 * that the command's class is known, if it is a sub-class of INTERRUPT the priority is higher.<br>
-	 * @see INTERRUPT
+	 * @see ngat.message.INST_DP.INTERRUPT
 	 * @see Thread#setPriority
 	 */
 	protected void init()
@@ -223,13 +223,18 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 		}
 		if(command instanceof REBOOT)
 		{
-			// do nothing 
 			REBOOT_DONE rebootDone = new REBOOT_DONE(command.getId());
 
+		// Setting up this done object is a bit pointless, we never get chance to
+		// return this to the Ccs as we quit.
 			done = rebootDone;
 			rebootDone.setErrorNum(DpRtConstants.DPRT_ERROR_CODE_NO_ERROR);
 			rebootDone.setErrorString("");
 			rebootDone.setSuccessful(true);
+		// close the server to initiate a DpRt shutdown.
+		// Ignore the reboot level paramater...
+			dprt.close();
+		// don't quit here, DpRt.run terminates and DpRt.main recognizes we have called dprt.close.
 		}
 		if(command instanceof CALIBRATE_REDUCE)
 		{
@@ -295,6 +300,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.5  1999/11/01 14:31:59  cjm
+// Updated calculateAcknowledgeTime javadoc comment.
+//
 // Revision 0.4  1999/11/01 14:25:32  cjm
 // Moved setting priority into init method.
 // Changed calculateAcknowledgeTime method. Now returns ACK as per ngat.net.TCPServerConnectionThread.
