@@ -1,5 +1,5 @@
 // DpRtTCPServerConnectionThread.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.8 2002-11-26 18:49:10 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.9 2004-01-30 17:01:00 cjm Exp $
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -12,14 +12,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.8 $
+ * @version $Revision: 0.9 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.8 2002-11-26 18:49:10 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.9 2004-01-30 17:01:00 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -173,6 +173,7 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 			done.setSuccessful(false);
 			return;
 		}
+		dprt.log(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,"Command:"+command.getClass().getName()+" Started.");
 		if(dprt == null)
 		{
 			dprt.error("processCommand:dprt was null.");
@@ -322,8 +323,10 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 		{
 			dprt.getStatus().setCurrentThread(null);
 		}
-		if(dprt.getStatus().getLogLevel() > 0)
-			dprt.log("Command:"+command.getClass().getName()+" Completed.");
+		dprt.log(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,"Command:"+command.getClass().getName()+" Completed.");
+		dprt.log(DpRtConstants.DPRT_LOG_LEVEL_REPLIES,"Done:"+done.getClass().getName()+
+			":successful:"+done.getSuccessful()+
+			":error number:"+done.getErrorNum()+":error string:"+done.getErrorString());
 	}
 
 	/**
@@ -351,6 +354,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.8  2002/11/26 18:49:10  cjm
+// Added handling of MAKE_MASTER_BIAS/MAKE_MASTER_FLAT.
+//
 // Revision 0.7  2001/03/09 17:44:53  cjm
 // Updated REBOOT return code.
 //
