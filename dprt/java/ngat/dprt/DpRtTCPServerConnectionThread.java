@@ -1,5 +1,5 @@
 // DpRtTCPServerConnectionThread.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.9 2004-01-30 17:01:00 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.10 2004-02-12 13:34:21 cjm Exp $
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -12,14 +12,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.9 $
+ * @version $Revision: 0.10 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.9 2004-01-30 17:01:00 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.10 2004-02-12 13:34:21 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -126,19 +126,19 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 		}
 		else if((command instanceof CALIBRATE_REDUCE))
 		{
-			milliseconds = 60*1000;
+			milliseconds = defaultAcknowledgeTime;
 		}
 		else if((command instanceof EXPOSE_REDUCE))
 		{
-			milliseconds = 60*1000;
+			milliseconds = defaultAcknowledgeTime;
 		}
 		else if((command instanceof MAKE_MASTER_BIAS))
 		{
-			milliseconds = 60*1000;
+			milliseconds = defaultAcknowledgeTime;
 		}
 		else if((command instanceof MAKE_MASTER_FLAT))
 		{
-			milliseconds = 60*1000;
+			milliseconds = defaultAcknowledgeTime;
 		}
 		else
 		{
@@ -354,6 +354,10 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.9  2004/01/30 17:01:00  cjm
+// Changed to new log method.
+// Added Done logging
+//
 // Revision 0.8  2002/11/26 18:49:10  cjm
 // Added handling of MAKE_MASTER_BIAS/MAKE_MASTER_FLAT.
 //
