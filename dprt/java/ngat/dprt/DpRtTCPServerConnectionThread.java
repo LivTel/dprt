@@ -1,5 +1,5 @@
 // DpRtTCPServerConnectionThread.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.3 1999-06-30 15:06:13 dev Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.4 1999-11-01 14:25:32 cjm Exp $
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -12,14 +12,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Lee Howells
- * @version $Revision: 0.3 $
+ * @version $Revision: 0.4 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.3 1999-06-30 15:06:13 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.4 1999-11-01 14:25:32 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -81,45 +81,60 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 	}
 
 	/**
-	 * This method calculates the time it will take for the command to complete and is called
-	 * from the classes inherited run method. It also changes the threads priority now that the command's
-	 * class is known, if it is a sub-class of INTERRUPT the priority is higher.
+	 * This method is called after the clients command is read over the socket. It allows us to
+	 * initialise this threads response to a command. This method changes the threads priority now 
+	 * that the command's class is known, if it is a sub-class of INTERRUPT the priority is higher.<br>
+	 * @see INTERRUPT
+	 * @see Thread#setPriority
 	 */
-	protected int calculateAcknowledgeTime()
+	protected void init()
 	{
-		int time;
-
 	// set the threads priority
 		if(command instanceof INTERRUPT)
 			this.setPriority(DpRtConstants.DPRT_THREAD_PRIORITY_INTERRUPT);
 		else
 			this.setPriority(DpRtConstants.DPRT_THREAD_PRIORITY_NORM);
+	}
+
+	/**
+	 * This method calculates the time it will take for the command to complete and is called
+	 * from the classes inherited run method. 
+	 */
+	protected ACK calculateAcknowledgeTime()
+	{
+		ACK acknowledge = null;
+		int milliseconds;
+
+	// setup return object
+		acknowledge = new ACK(command.getId());
 	// calculate acknowledge time
 		if((command instanceof ABORT))
 		{
-			time = defaultAcknowledgeTime;
+			milliseconds = defaultAcknowledgeTime;
 		}
 		else if((command instanceof REBOOT))
 		{
-			time = defaultAcknowledgeTime;
+			milliseconds = defaultAcknowledgeTime;
 		}
 		else if((command instanceof STOP))
 		{
-			time = defaultAcknowledgeTime;
+			milliseconds = defaultAcknowledgeTime;
 		}
 		else if((command instanceof CALIBRATE_REDUCE))
 		{
-			time = 60*1000;
+			milliseconds = 60*1000;
 		}
 		else if((command instanceof EXPOSE_REDUCE))
 		{
-			time = 60*1000;
+			milliseconds = 60*1000;
 		}
 		else
 		{
-			time = defaultAcknowledgeTime;
+			milliseconds = defaultAcknowledgeTime;
 		}
-		return time;
+	// setup return acknowledgments time to complete.
+		acknowledge.setTimeToComplete(milliseconds);
+		return acknowledge;
 	}
 
 	/**
@@ -276,6 +291,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.3  1999/06/30 15:06:13  dev
+// backup
+//
 // Revision 0.2  1999/06/24 11:26:22  dev
 // "Backup"
 //
