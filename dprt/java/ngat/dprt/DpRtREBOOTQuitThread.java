@@ -1,5 +1,7 @@
-// DpRtREBOOTQuitThread.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtREBOOTQuitThread.java,v 1.1 2001-03-09 16:22:11 cjm Exp $
+// DpRtREBOOTQuitThread.java
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtREBOOTQuitThread.java,v 1.2 2004-03-31 08:40:01 cjm Exp $
+package ngat.dprt;
+
 import java.lang.*;
 import java.io.*;
 
@@ -9,14 +11,14 @@ import java.io.*;
  * This is used in, for instance, the REBOOTImplementation, so that the 
  * REBOOT's DONE mesage is returned to the client before the DpRt is terminated.
  * @author Chris Mottram
- * @version $Revision: 1.1 $
+ * @version $Revision: 1.2 $
  */
 public class DpRtREBOOTQuitThread extends Thread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtREBOOTQuitThread.java,v 1.1 2001-03-09 16:22:11 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtREBOOTQuitThread.java,v 1.2 2004-03-31 08:40:01 cjm Exp $");
 	/**
 	 * The Thread, that has to terminatre before this thread calls System.exit
 	 */
@@ -79,4 +81,7 @@ public class DpRtREBOOTQuitThread extends Thread
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.1  2001/03/09 16:22:11  cjm
+// Initial revision
+//
 //
