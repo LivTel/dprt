@@ -1,24 +1,27 @@
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.4 2004-01-30 17:01:00 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.5 2004-03-31 08:45:30 cjm Exp $
+package ngat.dprt.ccs;
+
 import java.lang.*;
 import java.io.*;
 
+import ngat.dprt.*;
 import ngat.message.base.*;
 import ngat.message.INST_DP.*;
 import ngat.util.logging.*;
 
 /**
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
- * FITS file data reduction.
+ * FITS file data reduction, for the CCD Control System (CCS).
  * @author Chris Mottram LJMU
- * @version $Revision: 0.4 $
+ * @version $Revision: 0.5 $
  */
-class DpRtLibrary
+public class DpRtLibrary implements DpRtLibraryInterface
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.4 2004-01-30 17:01:00 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.5 2004-03-31 08:45:30 cjm Exp $");
 
 // DpRt.h
 	/**
@@ -97,7 +100,7 @@ class DpRtLibrary
 	 */
 	static
 	{
-		System.loadLibrary("dprt");
+		System.loadLibrary("dprt_ccs");
 	}
 
 	/**
@@ -109,7 +112,7 @@ class DpRtLibrary
 	public DpRtLibrary()
 	{
 		super();
-		initialiseLoggerReference(LogManager.getLogger("DpRtLibrary"));
+		initialiseLoggerReference(LogManager.getLogger(this));
 	}
 
 	/**
@@ -238,7 +241,7 @@ class DpRtLibrary
 
 	/**
 	 * Routine to call to create a master flat FITS file. Any Flat frames in the directory specified are processed.
-	 * @param dirname A string containing the directory path to look for Bias frames in.
+	 * @param dirname A string containing the directory path to look for Flat frames in.
 	 * @param makeFlatDone The done object, that will be filled in.
 	 */
 	public void DpRtMakeMasterFlat(String dirname,MAKE_MASTER_FLAT_DONE makeFlatDone)
@@ -270,6 +273,9 @@ class DpRtLibrary
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.4  2004/01/30 17:01:00  cjm
+// Added logging support from C layer back up to Java.
+//
 // Revision 0.3  2002/11/26 18:49:10  cjm
 // Added DpRtMakeMasterFlat, DpRtMakeMasterBias.
 // Added Exception throwing.
