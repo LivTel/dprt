@@ -1,35 +1,32 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.3 1999-06-30 15:44:18 dev Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.4 1999-08-24 16:31:32 cjm Exp $ 
 include ../../Makefile.common
+include ../Makefile.common
 
-INCDIR = ../include
-DOCSDIR = ../javadocs
-DOCFLAGS = -version -author -private
+INCDIR 		= $(DPRT_SRC_HOME)/include
+BINDIR 		= $(DPRT_BIN_HOME)/java
+DOCSDIR 	= $(DPRT_DOC_HOME)/javadocs
+DOCFLAGS 	= -version -author -private
 SRCS = DpRtLibrary.java DpRtStatus.java DpRtTCPServer.java DpRtTCPServerConnectionThread.java DpRtConstants.java DpRt.java
-OBJS = $(SRCS:%.java=%.class)
-DOCS = $(SRCS:%.java=$(DOCSDIR)/%.html)
+OBJS 		= $(SRCS:%.java=$(BINDIR)/%.class)
+DOCS 		= $(SRCS:%.java=$(DOCSDIR)/%.html)
 
-top: $(OBJS) $(DOCS)
+top: $(OBJS) $(INCDIR)/DpRtLibrary.h config docs
 
-DpRt.class: DpRt.java
-	$(JAVAC) $(JAVAC_OPTIONS) DpRt.java
+$(BINDIR)/%.class:%.java
+	$(JAVAC) $(JAVAC_OPTIONS) -d $(BINDIR) $<
 
-DpRtStatus.class: DpRtStatus.java
-	$(JAVAC) $(JAVAC_OPTIONS) DpRtStatus.java
+DpRtTCPServerConnectionThread.class: DpRtConstants.class
 
-DpRtTCPServer.class: DpRtTCPServer.java
-	$(JAVAC) $(JAVAC_OPTIONS) DpRtTCPServer.java
+$(INCDIR)/DpRtLibrary.h: $(BINDIR)/DpRtLibrary.class
+	$(JAVAH) -jni -d $(INCDIR) -classpath $(BINDIR):$(CLASSPATH) DpRtLibrary
 
-DpRtTCPServerConnectionThread.class: DpRtTCPServerConnectionThread.java DpRtConstants.class
-	$(JAVAC) $(JAVAC_OPTIONS) DpRtTCPServerConnectionThread.java
+config: $(BINDIR)/dprt.properties
 
-DpRtConstants.class: DpRtConstants.java
-	$(JAVAC) $(JAVAC_OPTIONS) DpRtConstants.java
+$(BINDIR)/dprt.properties: $(HOST).dprt.properties
+	$(CP) $(HOST).dprt.properties $(BINDIR)/dprt.properties
 
-DpRtLibrary.class: DpRtLibrary.java
-	$(JAVAC) $(JAVAC_OPTIONS) DpRtLibrary.java
-	$(JAVAH) -jni DpRtLibrary
-	$(MV) DpRtLibrary.h $(INCDIR)
+docs: $(DOCS)
 
 $(DOCS): $(SRCS)
 	$(JAVADOC) -d $(DOCSDIR) $(DOCFLAGS) $(SRCS)
@@ -41,13 +38,16 @@ checkin:
 	$(CI) $(SRCS)
 
 clean:
-	$(RM) $(RM_OPTIONS) $(OBJS *.fits) $(TIDY_OPTIONS)
+	$(RM) $(RM_OPTIONS) $(OBJS) $(TIDY_OPTIONS)
 
 tidy:
-	$(RM) $(RM_OPTIONS) dprt_error.txt dprt_log.txt *.fits $(TIDY_OPTIONS)
+	$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS)
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.3  1999/06/30 15:44:18  dev
+# Deleteing error/log file for tidy target for backup target
+#
 # Revision 0.2  1999/06/30 15:39:51  dev
 # Makefile tidies latex directory for backup
 #
