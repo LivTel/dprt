@@ -1,5 +1,5 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.6 1999-12-10 12:15:51 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.7 2000-07-06 14:35:41 cjm Exp $ 
 include ../../Makefile.common
 include ../Makefile.common
 
@@ -20,6 +20,7 @@ DpRtTCPServerConnectionThread.class: DpRtConstants.class
 
 $(INCDIR)/DpRtLibrary.h: $(BINDIR)/DpRtLibrary.class
 	$(JAVAH) -jni -d $(INCDIR) -classpath $(BINDIR):$(CLASSPATH) DpRtLibrary
+	$(TOUCH) $@
 
 config: $(BINDIR)/dprt.properties
 
@@ -47,6 +48,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.6  1999/12/10 12:15:51  cjm
+# Added backup target.
+#
 # Revision 0.5  1999/09/08 13:53:31  cjm
 # Changed checkin target to accept failure (due to files not being checked out locked).
 # Changed checkin target to use CI_OPTIONS.
