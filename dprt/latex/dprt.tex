@@ -24,9 +24,10 @@ of how the system communicates with the CCS. It does not discuss the actual data
 \hline
 {\bf Version} & {\bf Author} & {\bf Date} & {\bf Notes} \\
 \hline
-0.1 &              C. J. Mottram & 1/7/99 & First draft \\
-0.2 &              C. J. Mottram & 2/8/99 & Changes due to ltccd1 being development machine. \\
-0.3 &              C. J. Mottram & 31/8/99 & Changes to references - now on ltccd1. \\
+0.1 & C. J. Mottram & 01/07/99 & First draft \\
+0.2 & C. J. Mottram & 02/08/99 & Changes due to ltccd1 being development machine. \\
+0.3 & C. J. Mottram & 31/08/99 & Changes to references - now on ltccd1. \\
+0.4 & C. J. Mottram & 15/05/01 & Split DpRt into Java and C sub-systems for easier source management. \\
 \hline
 \end{tabular}
 \end{center}
@@ -217,45 +218,58 @@ by the Java layer for the DONE message. If a reduction fails the routine should 
 set the DONE objects successful flag to FALSE.
 
 \section{Directory Structure}
-The current prototype is located in the {\em dprt} directory. This should be installed from the 
+The current prototype is located in two sub-system directories.
+
+The {\em dprt} directory contains the Java layer. This should be installed from the 
 {\em dprt.tar.Z} archive. On {\em ltccd1} it is installed in the {\em /space/home/dev/src} directory. 
 This is the current master copy, and is the one that should be edited. 
+
+The {\em libdprt} directory contains the shared C library layer. This should be installed from the 
+{\em libdprt.tar.Z} archive. On {\em ltccd1} it is installed in the {\em /space/home/dev/src} directory. 
+This is the current master copy, and is the one that should be edited. Slave copies of this part of DpRt
+need to be compiled on each kind of operating system the data pipeline is to run on.
 
 The current directory structure is displayed in Figure \ref{fig:dprtdir}.
 
 \setlength{\unitlength}{1in}
 \begin{figure}[!h]
 	\begin{center}
-		\begin{picture}(5.0,6.5)(0.0,0.0)
-			\put(0,0){\special{psfile=dprt_dirtree.eps   hscale=65 vscale=65}}
+		\begin{picture}(6.0,5.5)(0.0,0.0)
+			\put(0,0){\special{psfile=dprt_dirtree.eps   hscale=50 vscale=50}}
 		\end{picture}
 	\end{center}
 	\caption{\em DpRt Directory Structure.}
 	\label{fig:dprtdir} 
 \end{figure}
 
-\subsection{Top Level Contents}
+\subsection{dprt Directory Contents}
 \begin{itemize}
-\item {\bf c} This contains the C library source code to build {\em libdprt}, the C library that actually does the
-data reduction. The Java class {\em DpRtLibrary} picks up the shared version of this library to do the reduction.
-The test program {\em dprt\_test} picks up the static version of this library to test the library.
-\item {\bf include} This contains the C library headers that declare the external routines in {\em libdprt}.
 \item {\bf java} This contains the Java sources for the classes that make up {\em DpRt}, the Java server that 
 receives messages from the CCS and passes FITS filenames in them to {\em libdprt} for data reduction.
-\item {\bf test} Contains the C code to build {\em dprt\_test}, a C test program to test data reduction in 
-{\em libdprt} without using the Java wrappers.
 \item {\bf latex} Contains \LaTeX documentation for dprt deliverables.
 \item {\bf javadocs} Contains generated API documentation for the Java classes in the {\em java} directory. The 
 documentation is generated using the {\em javadoc} tool when the {\em java} directory is built.
 \item {\bf Makefile} The top-level Makefile for the dprt directory. Can be used for building all the
 deliverables in this directory, for checking in  and out the source code in each directory, and for creating a 
 backup tar file. Most targets are achieved by calling Makefiles in each of the sub-directories that contain code.
-\footnotemark
+\item {\bf README} Text file reminding us what is contained in this directory.
+\end{itemize}
+
+\subsection{libdprt Directory Contents}
+\begin{itemize}
+\item {\bf c} This contains the C library source code to build {\em libdprt}, the C library that actually does the
+data reduction. The Java class {\em DpRtLibrary} picks up the shared version of this library to do the reduction.
+The test program {\em dprt\_test} links against the library.
+\item {\bf include} This contains the C library headers that declare the external routines in {\em libdprt}.
+\item {\bf test} Contains the C code to build {\em dprt\_test}, a C test program to test data reduction in 
+{\em libdprt} without using the Java wrappers.
+\item {\bf Makefile} The top-level Makefile for the libdprt directory. Can be used for building all the
+deliverables in this directory, for checking in  and out the source code in each directory, and for creating a 
+backup tar file. Most targets are achieved by calling Makefiles in each of the sub-directories that contain code.
 \item {\bf cdocs} The generated API documentation from the {\em c} directory is put into this directory. The
 documentation is generated when {\em libdprt} is built using the {\em cdoc} tool.
 \item {\bf README} Text file reminding us what is contained in this directory.
 \end{itemize}
-\footnotetext{Note to use this script the CHECK\_IN\_MESSAGE environment variable must be set to a message string to check the source in with.}
 
 \section{Editing, Compiling and Running DpRt}
 \subsection{Environment}
@@ -266,6 +280,9 @@ The Makefiles are run using the {\em make} command. Some environment variables n
 system specific options before running the makefiles. These are defined in the {\em lt\_environment.csh}
 shell script in the top level directory. This needs to be sourced before the programs/libraries can be built.
 The script is different on each system the software can be compiled on.
+
+The {\bf dprt} directory should be built before the {\bf libdprt} directory, as the {\em DpRtLibrary.h}
+header file is machine generated from the {\em DpRtLibrary} Java class.
 
 The important environment variables that are defined are listed in Table \ref{tab:makeenv}.
 
@@ -284,9 +301,7 @@ TIMELIB		& Library to link against to get POSIX nanosleep functionality. \\ \hli
 CDOC\_HOME	& Home directory of the {\em cdoc} C source documentation tool. \\ \hline
 CLASSPATH	& Directories and Jar files to look for Java classes in. 
 {\em ngat\_net\_util.jar} contains the JMS network library classes. 
-{\em message\_*.jar} contains the JMS message classes. 
-{\em djgl\_2\_0\_svid.jar} contains the JDK1.1.x/JDK1.2.x compatible version of the djgl collection classes. 
-{\em pse.zip},{\em tools.zip} and {\em classes.zip} contain the Object-Store database classes.  \\ \hline
+{\em message\_*.jar} contains the JMS message classes.  \\ \hline
 LD\_LIBRARY\_PATH & Path for Java to search for shared libraries in.  \\ \hline
 \end{tabular}
 \end{footnotesize}
@@ -303,7 +318,7 @@ programs. This includes the java directories, RCS executables(co,ci and rcs), cc
 \subsection{Makefile hierarchy}
 Makefiles are used by the {\em make} tool to build projects from source code to their final executable form.
 Type {\em man make} to read the documentation on {\em make}.
-There are several Makefiles in the dprt directory that are used to build parts of the program. These
+There are several Makefiles in the dprt and libdprt directories that are used to build parts of the program. These
 are documented in Table \ref{tab:makefile}.
 
 \begin{table}[!h]
@@ -313,17 +328,25 @@ are documented in Table \ref{tab:makefile}.
 {\bf Location} 		& {\bf Description} 				& {\bf Targets supported} \\ \hline
 \verb'$(LT_SRC_HOME)'/Makefile	& Builds all the targets in the sub-directories. & 
 top, checkin, checkout, clean, tidy, backup \\ \hline
-\verb'$(LT_SRC_HOME)'/Makefile.common& Common makefile included in all Makefiles to give common definitions and location of tools &
-None (don't call this Makefile, it is included in other Makefiles). \\ \hline
-\verb'$(LT_SRC_HOME)'/dprt/Makefile	& Top-level dprt Makefile, calls makefiles in java,c and test directories to build targets &
-top, checkin, checkout, clean, tidy, backup \\ \hline
-\verb'$(LT_SRC_HOME)'/dprt/c/Makefile& Makefile for libdprt c library, includes checkin/checkout for the headers in the 
-include directory &
-top, static, staticdepend, depend, lint, checkin, checkout, clean, tidy \footnotemark[3] \\ \hline
+
+\verb'$(LT_SRC_HOME)'/Makefile.common& Common makefile included in all Makefiles to give 
+common definitions and location of tools & None (don't call this Makefile, 
+it is included in other Makefiles). \\ \hline
+
+\verb'$(LT_SRC_HOME)'/dprt/Makefile	& Top-level dprt Makefile, calls makefiles in java
+and latex directories to build targets & top, checkin, checkout, clean, tidy, backup \\ \hline
+
 \verb'$(LT_SRC_HOME)'/dprt/java/Makefile& Makefile for the Java classes in the DpRt program. &
 top, checkin, checkout, clean, tidy \footnotemark[4] \\ \hline
-\verb'$(LT_SRC_HOME)'/dprt/test/Makefile& Makes the test programs &
-top, depend, clean, checkin, checkout\\ \hline
+
+\verb'$(LT_SRC_HOME)'/libdprt/Makefile	& Top-level libdprt Makefile, calls makefiles in c and test 
+directories to build targets & top, checkin, checkout, clean, tidy, backup \\ \hline
+
+\verb'$(LT_SRC_HOME)'/libdprt/c/Makefile& Makefile for libdprt c library, includes checkin/checkout 
+for the headers in the include directory & top, static, staticdepend, depend, lint, checkin, 
+checkout, clean, tidy \footnotemark[3] \\ \hline
+
+\verb'$(LT_SRC_HOME)'/libdprt/test/Makefile& Makes the test programs & top, depend, clean, checkin, checkout\\ \hline
 \end{tabular}
 \end{footnotesize}
 \end{center}
@@ -331,8 +354,7 @@ top, depend, clean, checkin, checkout\\ \hline
 \label{tab:makefile} 
 \end{table}
 \footnotetext[3]{The {\em top} target only builds the shared library by default, use {\em make static} to build
-a statically linked library.}
-\footnotetext[4]{The {\em top} target also creates the machine generated header file 
+a statically linked library. The {\em top} target also creates the machine generated header file 
 {\em ~/dprt/include/DpRtLibrary.h}, using the {\em javah} tool on the {\em DpRtLibrary.java} file.}
 
 \subsubsection{Common Makefile Targets}
@@ -402,7 +424,7 @@ be checked out using {\em co \verb'<'source filenames\verb'>'} or {\em make chec
 To build the executables/classes in a particular directory, just type {\em make} or {\em make top}. 
 This will execute the commands
 to build the `top' target in the current directory. You should end up with an executable, a library or a series
-of class files. Note in the case of the shared library {\em libdprt.so}, this is placed in the java directory
+of class files. Note in the case of the shared library {\em libdprt.so}, this is placed in the shared library directory
 ready to be loaded by the Java class {\em DpRtLibrary}.
 
 \subsection{Running}
