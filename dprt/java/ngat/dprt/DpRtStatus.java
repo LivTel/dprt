@@ -1,21 +1,23 @@
-// DpRtStatus.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtStatus.java,v 0.2 1999-06-24 11:26:22 dev Exp $
+// DpRtStatus.java
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtStatus.java,v 0.3 2004-03-04 18:53:30 cjm Exp $
 import java.lang.*;
 import java.io.*;
 import java.util.*;
 
 import ngat.message.INST_DP.*;
+import ngat.util.logging.FileLogHandler;
+
 /**
  * This class holds status information for the DpRt program.
  * @author Chris Mottram
- * @version $Revision: 0.2 $
+ * @version $Revision: 0.3 $
  */
 public class DpRtStatus
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtStatus.java,v 0.2 1999-06-24 11:26:22 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRtStatus.java,v 0.3 2004-03-04 18:53:30 cjm Exp $");
 	/**
 	 * File name containing properties for dprt.
 	 */
@@ -112,6 +114,19 @@ public class DpRtStatus
 	}
 
 	/**
+	 * Method to return whether the loaded properties contain the specified keyword.
+	 * Calls the proprties object containsKey method. Note assumes the properties object has been initialised.
+	 * @param p The property key we wish to test exists.
+	 * @return The method returnd true if the specified key is a key in out list of properties,
+	 *         otherwise it returns false.
+	 * @see #properties
+	 */
+	public boolean propertyContainsKey(String p)
+	{
+		return properties.containsKey(p);
+	}
+
+	/**
 	 * Routine to get a properties value, given a key. Just calls the properties object getProperty routine.
 	 * @param p The property key we want the value for.
 	 * @return The properties value, as a string object.
@@ -177,10 +192,51 @@ public class DpRtStatus
 		b = Boolean.valueOf(valueString);
 		return b.booleanValue();
 	}
+
+	/**
+	 * Routine to get an integer representing a ngat.util.logging.FileLogHandler time period.
+	 * The value of the specified property should contain either:'HOURLY_ROTATION', 'DAILY_ROTATION' or
+	 * 'WEEKLY_ROTATION'.
+	 * @param p The property key we want the time period value for.
+	 * @return The properties value, as an FileLogHandler time period (actually an integer).
+	 * @exception NullPointerException If the properties value string is null an exception is thrown.
+	 * @exception IllegalArgumentException If the properties value string is not a valid time period,
+	 *            an exception is thrown.
+	 * @see #properties
+	 */
+	public int getPropertyLogHandlerTimePeriod(String p) throws NullPointerException, IllegalArgumentException
+	{
+		String valueString = null;
+		int timePeriod = 0;
+ 
+		valueString = properties.getProperty(p);
+		if(valueString == null)
+		{
+			throw new NullPointerException(this.getClass().getName()+
+						       ":getPropertyLogHandlerTimePeriod:keyword:"+
+						       p+":Value was null.");
+		}
+		if(valueString.equals("HOURLY_ROTATION"))
+			timePeriod = FileLogHandler.HOURLY_ROTATION;
+		else if(valueString.equals("DAILY_ROTATION"))
+			timePeriod = FileLogHandler.DAILY_ROTATION;
+		else if(valueString.equals("WEEKLY_ROTATION"))
+			timePeriod = FileLogHandler.WEEKLY_ROTATION;
+		else
+		{
+			throw new IllegalArgumentException(this.getClass().getName()+
+							   ":getPropertyLogHandlerTimePeriod:keyword:"+
+							   p+":Illegal value:"+valueString+".");
+		}
+		return timePeriod;
+	}
 }
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.2  1999/06/24 11:26:22  dev
+// "Backup"
+//
 // Revision 0.1  1999/06/21 15:49:42  dev
 // initial revision
 //
