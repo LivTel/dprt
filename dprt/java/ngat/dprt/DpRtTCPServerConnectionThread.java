@@ -1,5 +1,7 @@
 // DpRtTCPServerConnectionThread.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.10 2004-02-12 13:34:21 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.11 2004-03-31 08:40:01 cjm Exp $
+package ngat.dprt;
+
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -12,14 +14,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.10 $
+ * @version $Revision: 0.11 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.10 2004-02-12 13:34:21 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.11 2004-03-31 08:40:01 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -153,11 +155,11 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 	 * This method overrides the processCommand method in the ngat.net.TCPServerConnectionThread class.
 	 * It is called from the inherited run method. It is responsible for performing the commands
 	 * sent to it by the CCS. It should also construct the done object to describe the results of the command.
-	 * @see DpRtLibrary#DpRtAbort
+	 * @see DpRtLibraryInterface#DpRtAbort
 	 * @see DpRt#close
-	 * @see DpRtLibrary#DpRtCalibrateReduce
-	 * @see DpRtLibrary#DpRtExposeReduce
-	 * @see DpRtLibrary#DpRtMakeMasterBias
+	 * @see DpRtLibraryInterface#DpRtCalibrateReduce
+	 * @see DpRtLibraryInterface#DpRtExposeReduce
+	 * @see DpRtLibraryInterface#DpRtMakeMasterBias
 	 * @see DpRtREBOOTQuitThread
 	 */
 	protected void processCommand()
@@ -354,6 +356,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.10  2004/02/12 13:34:21  cjm
+// Changed all acknowledge times to use defaultAcknowledge time.
+//
 // Revision 0.9  2004/01/30 17:01:00  cjm
 // Changed to new log method.
 // Added Done logging
