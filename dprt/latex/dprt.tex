@@ -25,6 +25,7 @@ of how the system communicates with the CCS. It does not discuss the actual data
 {\bf Version} & {\bf Author} & {\bf Date} & {\bf Notes} \\
 \hline
 0.1 &              C. J. Mottram & 1/7/99 & First draft \\
+0.2 &              C. J. Mottram & 2/8/99 & Changes due to ltccd1 being development machine. \\
 \hline
 \end{tabular}
 \end{center}
@@ -216,10 +217,8 @@ set the DONE objects successful flag to FALSE.
 
 \section{Directory Structure}
 The current prototype is located in the {\em dprt} directory. This should be installed from the 
-{\em dprt.tar.Z} archive under a home directory. On {\em ltobs5} it is installed in the {\em /home/dev}
-directory and on {\em ltccd1} it is installed in the {\em /space/home/cjm} directory. Currently the version
-on {\em ltobs5} is the current master copy, and is the one that should be edited. The master copy will
-be moved to {\em ltccd1} when this machine has been setup for development.
+{\em dprt.tar.Z} archive. On {\em ltccd1} it is installed in the {\em /space/home/dev/src} directory. 
+This is the current master copy, and is the one that should be edited. 
 
 The current directory structure is displayed in Figure \ref{fig:dprtdir}.
 
@@ -313,18 +312,18 @@ are documented in Table \ref{tab:makefile}.
 \begin{footnotesize}
 \begin{tabular}{|l|p{20em}|p{20em}|} \hline
 {\bf Location} 		& {\bf Description} 				& {\bf Targets supported} \\ \hline
-\verb'~'/Makefile	& Builds all the targets in the sub-directories. & 
+\verb'$(LT_HOME)'/Makefile	& Builds all the targets in the sub-directories. & 
 top, checkin, checkout, clean, tidy, backup \\ \hline
-\verb'~'/Makefile.common& Common makefile included in all Makefiles to give common definitions and location of tools &
+\verb'$(LT_HOME)'/Makefile.common& Common makefile included in all Makefiles to give common definitions and location of tools &
 None (don't call this Makefile, it is included in other Makefiles). \\ \hline
-\verb'~'/dprt/Makefile	& Top-level dprt Makefile, calls makefiles in java,c and test directories to build targets &
+\verb'$(LT_HOME)'/dprt/Makefile	& Top-level dprt Makefile, calls makefiles in java,c and test directories to build targets &
 top, checkin, checkout, clean, tidy, backup \\ \hline
-\verb'~'/dprt/c/Makefile& Makefile for libdprt c library, includes checkin/checkout for the headers in the 
+\verb'$(LT_HOME)'/dprt/c/Makefile& Makefile for libdprt c library, includes checkin/checkout for the headers in the 
 include directory &
 top, static, staticdepend, depend, lint, checkin, checkout, clean, tidy \footnotemark[3] \\ \hline
-\verb'~'/dprt/java/Makefile& Makefile for the Java classes in the DpRt program. &
+\verb'$(LT_HOME)'/dprt/java/Makefile& Makefile for the Java classes in the DpRt program. &
 top, checkin, checkout, clean, tidy \footnotemark[4] \\ \hline
-\verb'~'/dprt/test/Makefile& Makes the test programs &
+\verb'$(LT_HOME)'/dprt/test/Makefile& Makes the test programs &
 top, depend, clean, checkin, checkout\\ \hline
 \end{tabular}
 \end{footnotesize}
@@ -383,12 +382,15 @@ C source code for common programming problems and displays the results.\\ \hline
 
 \subsection{Editing/RCS}
 Editing the source files is accomplished using any text editor, much as most text files are edited. Before 
-editing, however, the source files need to be `checked out' of the Revision Control System RCS. The relevant sources
-need to be locked during checkout so that other uses cannot edit them. This is achieved by typing
-{\em co -l \verb'<'source filenames\verb'>'}. Sometimes {\em co} will ask questions if sources are already checked out as being
+editing, however, the source files need to be `checked out' of the Revision Control System RCS.
+ This is achieved by typing
+{\em co \verb'<'source filenames\verb'>'}. 
+The relevant sources need to be locked before they can be edited. This can be done using the {\em -l} option to 
+{\em co}, or it can be done using the {\em Tools$\rightarrow$Version Control$\rightarrow$Check In/Out} menu in emacs.
+Sometimes {\em co} will ask questions if sources are already checked out as being
 writable. This probably means someone else is working on the source files.
 
-After the sources have finished being edited, they should be checked back in using {\em ci \verb'<'source filenames\verb'>'}. This
+After the sources have finished being edited, they should be checked back in using {\em ci \verb'<'source filenames\verb'>'} or the {\em Tools$\rightarrow$Version Control$\rightarrow$Check In/Out} menu in emacs. This
 will ask you for a log message for each file to describe the changes made to it.
 
 It is worth reading the {\em rcsintro} man page to get more information on RCS.
