@@ -1,5 +1,5 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.7 2000-07-06 14:35:41 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.8 2001-03-09 16:22:49 cjm Exp $ 
 include ../../Makefile.common
 include ../Makefile.common
 
@@ -7,7 +7,8 @@ INCDIR 		= $(DPRT_SRC_HOME)/include
 BINDIR 		= $(DPRT_BIN_HOME)/java
 DOCSDIR 	= $(DPRT_DOC_HOME)/javadocs
 DOCFLAGS 	= -version -author -private
-SRCS = DpRtLibrary.java DpRtStatus.java DpRtTCPServer.java DpRtTCPServerConnectionThread.java DpRtConstants.java DpRt.java
+SRCS = DpRtLibrary.java DpRtStatus.java DpRtTCPServer.java DpRtTCPServerConnectionThread.java \
+	DpRtConstants.java DpRt.java DpRtREBOOTQuitThread.java
 OBJS 		= $(SRCS:%.java=$(BINDIR)/%.class)
 DOCS 		= $(SRCS:%.java=$(DOCSDIR)/%.html)
 
@@ -48,6 +49,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.7  2000/07/06 14:35:41  cjm
+# Added touch to javah command.
+#
 # Revision 0.6  1999/12/10 12:15:51  cjm
 # Added backup target.
 #
