@@ -1,25 +1,34 @@
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.3 2002-11-26 18:49:10 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.4 2004-01-30 17:01:00 cjm Exp $
 import java.lang.*;
 import java.io.*;
 
 import ngat.message.base.*;
 import ngat.message.INST_DP.*;
+import ngat.util.logging.*;
 
 /**
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
  * FITS file data reduction.
  * @author Chris Mottram LJMU
- * @version $Revision: 0.3 $
+ * @version $Revision: 0.4 $
  */
 class DpRtLibrary
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.3 2002-11-26 18:49:10 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.4 2004-01-30 17:01:00 cjm Exp $");
 
 // DpRt.h
+	/**
+	 * Native wrapper to a libdprt routine that initialises the logger reference.
+	 */
+	private native void initialiseLoggerReference(Logger l);
+	/**
+	 * Native wrapper to a libdprt routine that finalises the logger reference.
+	 */
+	private native void finaliseLoggerReference();
 	/**
 	 * Native wrapper to a libdprt routine that finalizes any global references the C layer uses.
 	 */
@@ -92,21 +101,27 @@ class DpRtLibrary
 	}
 
 	/**
-	 * Constructor.
+	 * Constructor. Calls the super class constructor, and initialiseLoggerReference to set
+	 * the C layer's reference to the logger (for logging to Java from C).
+	 * @see #initialiseLoggerReference
+	 * @see ngat.util.logging.LogManager#getLogger
 	 */
 	public DpRtLibrary()
 	{
 		super();
+		initialiseLoggerReference(LogManager.getLogger("DpRtLibrary"));
 	}
 
 	/**
-	 * Finalize method for this class, delete JNI global references.
-	 * @see #finaliseReferences
+	 * Finalize method for this class, delete JNI global references, and logger references.
+	 * @see #DpRt_Finalise_References
+	 * @see #finaliseLoggerReference
 	 */
 	protected void finalize() throws Throwable
 	{
 		super.finalize();
 		DpRt_Finalise_References();
+		finaliseLoggerReference();
 	}
 
 // DpRt.h
@@ -255,6 +270,10 @@ class DpRtLibrary
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.3  2002/11/26 18:49:10  cjm
+// Added DpRtMakeMasterFlat, DpRtMakeMasterBias.
+// Added Exception throwing.
+//
 // Revision 0.2  2002/05/20 14:15:42  cjm
 // Added setStatus/initialise/finalize.
 //
