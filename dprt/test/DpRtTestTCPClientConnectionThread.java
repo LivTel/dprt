@@ -1,5 +1,5 @@
 // DpRtTestTCPClientConnectionThread.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/test/DpRtTestTCPClientConnectionThread.java,v 1.1 2001-08-10 13:07:02 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/test/DpRtTestTCPClientConnectionThread.java,v 1.2 2001-08-10 13:07:42 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -13,7 +13,7 @@ import ngat.message.INST_DP.*;
  * The DpRtTestTCPClientConnectionThread extends TCPClientConnectionThreadMA. 
  * It implements the generic JMS command protocol.
  * @author Chris Mottram
- * @version $Revision: 1.1 $
+ * @version $Revision: 1.2 $
  * @see ngat.net.TCPClientConnectionThreadMA
  */
 public class DpRtTestTCPClientConnectionThread extends TCPClientConnectionThreadMA
@@ -62,3 +62,6 @@ public class DpRtTestTCPClientConnectionThread extends TCPClientConnectionThread
 			"\n\tsuccessful:"+done.getSuccessful());
 	}
 }
+//
+// $Log: not supported by cvs2svn $
+//
