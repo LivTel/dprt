@@ -1,5 +1,5 @@
-// DpRtTCPServer.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServer.java,v 0.1 1999-06-21 15:49:42 dev Exp $
+// DpRtTCPServer.java
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServer.java,v 0.2 2004-01-30 17:01:00 cjm Exp $
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -8,15 +8,15 @@ import ngat.net.*;
 
 /**
  * This class extends the TCPServer class for the DpRt application.
- * @author Lee Howells
- * @version $Revision: 0.1 $
+ * @author Chris Mottram, LJMU
+ * @version $Revision: 0.2 $
  */
 public class DpRtTCPServer extends TCPServer
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServer.java,v 0.1 1999-06-21 15:49:42 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServer.java,v 0.2 2004-01-30 17:01:00 cjm Exp $");
 	/**
 	 * Field holding the instance of the dprt currently executing, so we can pass this to spawned threads.
 	 */
@@ -52,7 +52,6 @@ public class DpRtTCPServer extends TCPServer
 
 		thread = new DpRtTCPServerConnectionThread(connectionSocket);
 		thread.setDpRt(dprt);
-		thread.setErrorStream(dprt.getErrorStream());
 		thread.setPriority(DpRtConstants.DPRT_THREAD_PRIORITY_INTERRUPT);
 		thread.start();
 	}
@@ -61,4 +60,7 @@ public class DpRtTCPServer extends TCPServer
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.1  1999/06/21 15:49:42  dev
+// initial revision
+//
 //
