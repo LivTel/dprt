@@ -1,5 +1,5 @@
 // DpRtTCPServerConnectionThread.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.2 1999-06-24 11:26:22 dev Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.3 1999-06-30 15:06:13 dev Exp $
 import java.lang.*;
 import java.io.*;
 import java.net.*;
@@ -12,14 +12,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Lee Howells
- * @version $Revision: 0.2 $
+ * @version $Revision: 0.3 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.2 1999-06-24 11:26:22 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.3 1999-06-30 15:06:13 dev Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -170,7 +170,6 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 			dprt.error(s);
 			return;
 		}
-	// diddly This should not always be set for abort get status etc.
 	// This initial test says interupt class commands should not become current command.
 	// This class of commands probably want to see what the current command is anyway.
 		if(!(command instanceof INTERRUPT))
@@ -277,6 +276,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.2  1999/06/24 11:26:22  dev
+// "Backup"
+//
 // Revision 0.1  1999/06/21 15:49:42  dev
 // initial revision
 //
