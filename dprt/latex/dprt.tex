@@ -312,18 +312,18 @@ are documented in Table \ref{tab:makefile}.
 \begin{footnotesize}
 \begin{tabular}{|l|p{20em}|p{20em}|} \hline
 {\bf Location} 		& {\bf Description} 				& {\bf Targets supported} \\ \hline
-\verb'$(LT_HOME)'/Makefile	& Builds all the targets in the sub-directories. & 
+\verb'$(LT_SRC_HOME)'/Makefile	& Builds all the targets in the sub-directories. & 
 top, checkin, checkout, clean, tidy, backup \\ \hline
-\verb'$(LT_HOME)'/Makefile.common& Common makefile included in all Makefiles to give common definitions and location of tools &
+\verb'$(LT_SRC_HOME)'/Makefile.common& Common makefile included in all Makefiles to give common definitions and location of tools &
 None (don't call this Makefile, it is included in other Makefiles). \\ \hline
-\verb'$(LT_HOME)'/dprt/Makefile	& Top-level dprt Makefile, calls makefiles in java,c and test directories to build targets &
+\verb'$(LT_SRC_HOME)'/dprt/Makefile	& Top-level dprt Makefile, calls makefiles in java,c and test directories to build targets &
 top, checkin, checkout, clean, tidy, backup \\ \hline
-\verb'$(LT_HOME)'/dprt/c/Makefile& Makefile for libdprt c library, includes checkin/checkout for the headers in the 
+\verb'$(LT_SRC_HOME)'/dprt/c/Makefile& Makefile for libdprt c library, includes checkin/checkout for the headers in the 
 include directory &
 top, static, staticdepend, depend, lint, checkin, checkout, clean, tidy \footnotemark[3] \\ \hline
-\verb'$(LT_HOME)'/dprt/java/Makefile& Makefile for the Java classes in the DpRt program. &
+\verb'$(LT_SRC_HOME)'/dprt/java/Makefile& Makefile for the Java classes in the DpRt program. &
 top, checkin, checkout, clean, tidy \footnotemark[4] \\ \hline
-\verb'$(LT_HOME)'/dprt/test/Makefile& Makes the test programs &
+\verb'$(LT_SRC_HOME)'/dprt/test/Makefile& Makes the test programs &
 top, depend, clean, checkin, checkout\\ \hline
 \end{tabular}
 \end{footnotesize}
