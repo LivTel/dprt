@@ -1,5 +1,5 @@
 // DpRt.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.6 2001-05-17 10:18:24 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.7 2002-05-20 14:14:39 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -13,14 +13,14 @@ import ngat.ccd.*;
 /**
  * This class is the start point for the Data Pipeline (Real TIme Module).
  * @author Lee Howells
- * @version $Revision: 0.6 $
+ * @version $Revision: 0.7 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.6 2001-05-17 10:18:24 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.7 2002-05-20 14:14:39 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -136,6 +136,8 @@ public class DpRt
 		}
 	// initialise dprt library
 		libdprt = new DpRtLibrary();
+		libdprt.setStatus(status);
+		libdprt.initialise();
 	// initialise port numbers from properties file
 		try
 		{
@@ -385,6 +387,9 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.6  2001/05/17 10:18:24  cjm
+// Fixed Exception catching bug when getting threadMonitorUpdateTime from status.
+//
 // Revision 0.5  2001/03/09 16:23:23  cjm
 // Changed quit code.
 //
