@@ -1,5 +1,5 @@
 // DpRt.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.11 2004-03-31 08:40:01 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.12 2004-04-15 11:16:26 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -15,14 +15,14 @@ import ngat.util.logging.*;
 /**
  * This class is the start point for the Data Pipeline (Real Time Module).
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.11 $
+ * @version $Revision: 0.12 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.11 2004-03-31 08:40:01 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.12 2004-04-15 11:16:26 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -189,7 +189,7 @@ public class DpRt
 		Class cl = null;
 
 		// get class name
-		className = status.getProperty("dprt.dprtlibrary.implmentation");
+		className = status.getProperty("dprt.dprtlibrary.implementation");
 		if(className == null)
 		{
 			throw new NullPointerException(this.getClass().getName()+
@@ -802,6 +802,14 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.11  2004/03/31 08:40:01  cjm
+// Repackaged into ngat.dprt.
+// libdprt now a DpRtLibraryInterface.
+// configurationFilename command line option added.
+// log level initialisation changed.
+// initLibDpRt used to get DpRtLibraryInterface concrete class from properties.
+// Argument parsing now done before init().
+//
 // Revision 0.10  2004/03/04 18:54:39  cjm
 // Changed initFileLogHandler to allow time period log files.
 //
