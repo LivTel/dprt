@@ -1,5 +1,7 @@
 // DpRtStatus.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtStatus.java,v 0.3 2004-03-04 18:53:30 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtStatus.java,v 0.4 2004-03-31 08:40:01 cjm Exp $
+package ngat.dprt;
+
 import java.lang.*;
 import java.io.*;
 import java.util.*;
@@ -10,18 +12,18 @@ import ngat.util.logging.FileLogHandler;
 /**
  * This class holds status information for the DpRt program.
  * @author Chris Mottram
- * @version $Revision: 0.3 $
+ * @version $Revision: 0.4 $
  */
 public class DpRtStatus
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtStatus.java,v 0.3 2004-03-04 18:53:30 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtStatus.java,v 0.4 2004-03-31 08:40:01 cjm Exp $");
 	/**
 	 * File name containing properties for dprt.
 	 */
-	private final static String PROPERTY_FILE_NAME = new String("./dprt.properties");
+	private final static String DEFAULT_PROPERTY_FILE_NAME = "./dprt.properties";
 
 	/**
 	 * The logging level.
@@ -42,13 +44,23 @@ public class DpRtStatus
 	/**
 	 * The load method for the class. This loads the property file from disc.
 	 * @see #properties
+	 * @see #load(java.lang.String)
 	 */
 	public void load() throws FileNotFoundException,IOException
+	{
+		load(DEFAULT_PROPERTY_FILE_NAME);
+	}
+
+	/**
+	 * The load method for the class. This loads the property file from disc.
+	 * @see #properties
+	 */
+	public void load(String filename) throws FileNotFoundException,IOException
 	{
 		FileInputStream fileInputStream = null;
 		
 		properties = new Properties();
-		fileInputStream = new FileInputStream(PROPERTY_FILE_NAME);
+		fileInputStream = new FileInputStream(filename);
 		properties.load(fileInputStream);
 		fileInputStream.close();
 	}
@@ -234,6 +246,10 @@ public class DpRtStatus
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.3  2004/03/04 18:53:30  cjm
+// Removed Fundamental mode.
+// Added propertyContainsKey and getPropertyLogHandlerTimePeriod methods.
+//
 // Revision 0.2  1999/06/24 11:26:22  dev
 // "Backup"
 //
