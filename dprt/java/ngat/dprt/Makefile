@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.13 2004-05-24 17:56:40 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.14 2004-07-06 18:03:24 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -17,7 +17,8 @@ DOCS 		= $(SRCS:%.java=$(DOCSDIR)/%.html)
 
 CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properties \
 		ftccd1.dprt.properties ftccd2.dprt.properties ltobs9.dprt.properties \
-		supircam1.dprt.properties ftspec1.dprt.properties spectrograph.dprt.properties
+		supircam1.dprt.properties ftspec1.dprt.properties \
+		spectrograph.dprt.properties nuview1.dprt.properties
 CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
 
 DIRS 		= ccs scs supircam ftspec
@@ -75,6 +76,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.13  2004/05/24 17:56:40  cjm
+# Added ftccd2.
+#
 # Revision 0.12  2004/04/19 17:58:49  cjm
 # Added spectrograph.dprt.properties.
 #
