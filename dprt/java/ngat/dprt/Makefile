@@ -1,5 +1,5 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.2 1999-06-30 15:39:51 dev Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.3 1999-06-30 15:44:18 dev Exp $ 
 include ../../Makefile.common
 
 INCDIR = ../include
@@ -41,13 +41,16 @@ checkin:
 	$(CI) $(SRCS)
 
 clean:
-	$(RM) $(RM_OPTIONS) $(OBJS) $(TIDY_OPTIONS) *.fits
+	$(RM) $(RM_OPTIONS) $(OBJS *.fits) $(TIDY_OPTIONS)
 
 tidy:
-	$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS) *.fits dprt_error.txt dprt_log.txt
+	$(RM) $(RM_OPTIONS) dprt_error.txt dprt_log.txt *.fits $(TIDY_OPTIONS)
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.2  1999/06/30 15:39:51  dev
+# Makefile tidies latex directory for backup
+#
 # Revision 0.1  1999/06/24 10:56:30  dev
 # initial revision
 #
