@@ -1,5 +1,5 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.5 1999-09-08 13:53:31 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.6 1999-12-10 12:15:51 cjm Exp $ 
 include ../../Makefile.common
 include ../Makefile.common
 
@@ -38,13 +38,19 @@ checkin:
 	-$(CI) $(CI_OPTIONS) $(SRCS)
 
 clean:
-	$(RM) $(RM_OPTIONS) $(OBJS) $(TIDY_OPTIONS)
+	-$(RM) $(RM_OPTIONS) $(OBJS) $(TIDY_OPTIONS)
 
 tidy:
-	$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS)
+	-$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS)
+
+backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.5  1999/09/08 13:53:31  cjm
+# Changed checkin target to accept failure (due to files not being checked out locked).
+# Changed checkin target to use CI_OPTIONS.
+#
 # Revision 0.4  1999/08/24 16:31:32  cjm
 # Changed for new directory struct on ltccd1.
 # Changed Java compilation so that it uses a generic rather than specific rule.
