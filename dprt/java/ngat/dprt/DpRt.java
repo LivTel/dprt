@@ -1,5 +1,5 @@
 // DpRt.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.3 1999-10-22 17:06:53 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.4 2000-08-01 14:28:44 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -13,14 +13,14 @@ import ngat.ccd.*;
 /**
  * This class is the start point for the Data Pipeline (Real TIme Module).
  * @author Lee Howells
- * @version $Revision: 0.3 $
+ * @version $Revision: 0.4 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.3 1999-10-22 17:06:53 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.4 2000-08-01 14:28:44 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -375,13 +375,24 @@ public class DpRt
 			System.exit(1);
 		}
 		dprt.run();
-		dprt.close();
-		System.exit(0);
+	// If we reach this stage, then the TCPServer socket thread has terminated.
+	// This is either because a REBOOT has been requested in which case TCPServer.quit is true,
+	// or because of some error in the TCPServer (socket in use etc.) in which case TCPServer.quit is false.
+		if(dprt.server.getQuit())
+			System.exit(0);
+		else
+		{
+			dprt.close(); // note server.getQuit() is now true!
+			System.exit(1);
+		}
 	}
 }
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.3  1999/10/22 17:06:53  cjm
+// Added ngat.ccd to import so DpRt compiles.
+//
 // Revision 0.2  1999/06/24 11:26:22  dev
 // "Backup"
 //
