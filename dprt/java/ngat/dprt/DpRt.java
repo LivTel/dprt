@@ -1,26 +1,28 @@
 // DpRt.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.8 2002-11-26 18:49:10 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.9 2004-01-30 17:01:00 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
 import java.net.*;
+import java.text.*;
 import java.util.*;
 
 import ngat.net.*;
 import ngat.util.*;
-import ngat.ccd.*;
+import ngat.util.logging.*;
+/* diddly import ngat.ccd.*;*/
 
 /**
- * This class is the start point for the Data Pipeline (Real TIme Module).
- * @author Lee Howells
- * @version $Revision: 0.8 $
+ * This class is the start point for the Data Pipeline (Real Time Module).
+ * @author Chris Mottram, LJMU
+ * @version $Revision: 0.9 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.8 2002-11-26 18:49:10 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.9 2004-01-30 17:01:00 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -46,13 +48,18 @@ public class DpRt
 	 */
 	private int serverPortNumber = 0;
 	/**
-	 * The stream to write error messages to - defaults to System.err.
+	 * The logging logger.
 	 */
-	private PrintWriter errorStream = new PrintWriter(System.err,true);
+	protected Logger logLogger = null;
 	/**
-	 * The stream to write log messages to - defaults to System.out.
+	 * The error logger.
 	 */
-	private PrintWriter logStream = new PrintWriter(System.out,true);
+	protected Logger errorLogger = null;
+	/**
+	 * The filter used to filter messages sent to the logging logger.
+	 * @see #logLogger
+	 */
+	protected BitFieldLogFilter logFilter = null;
 	/**
 	 * Do we want to start a thread monitor?
 	 */
@@ -65,24 +72,21 @@ public class DpRt
 	/**
 	 * This is the initialisation routine. This creates the <a href="#status">status</a> object. 
 	 * The properties for the application are loaded into the status object. 
-	 * The error and log files are opened (if this fails, errors default to System.err, logs to System.out).
+	 * The error and log files are initialised using <b>initLoggers</b>.
 	 * @see #status
-	 * @see #errorStream
-	 * @see #logStream
 	 * @exception FileNotFoundException Thrown if the property file cannot be found.
 	 * @exception IOException Thrown if the property file cannot be accessed and the properties cannot
 	 * 	be loaded for some reason.
 	 * @exception NumberFormatException Thrown if getting a port number from the configuration file that
 	 * 	is not a valid integer.
 	 * @exception DpRtLibraryNativeException Thrown if the C library initialisation fails.
+	 * @see #initLoggers
 	 */
 	private void init() throws FileNotFoundException,IOException,NumberFormatException,DpRtLibraryNativeException
 	{
-		String filename = null;
-		FileOutputStream fos = null;
 		int time;
 
-	// create status object and load ccs properties into it
+	// create status object and load properties into it
 		status = new DpRtStatus();
 		try
 		{
@@ -98,43 +102,8 @@ public class DpRt
 			error(this.getClass().getName()+":init:loading properties:"+e);
 			throw e;
 		}
-	// change errorStream to files defined in loaded properties
-		filename = status.getProperty("dprt.file.error");
-		if((filename != null)&&(filename.length()>0))
-		{
-			try
-			{
-				fos = new FileOutputStream(filename,true);
-			}
-			catch(IOException e)
-			{
-				error(this.getClass().getName()+":init:"+e);
-				fos = null;
-			}
-			if(fos != null)
-			{
-				// deprecated statement.
-				// This is the obly way to set System error stream for runtime (JVM) errors.
-				System.setErr(new PrintStream(fos));
-				errorStream = new PrintWriter(fos,true);
-			}
-		}
-	// change logStream to files defined in loaded properties
-		filename = status.getProperty("dprt.file.log");
-		if((filename != null)&&(filename.length()>0))
-		{
-			try
-			{
-				fos = new FileOutputStream(filename,true);
-			}
-			catch(IOException e)
-			{
-				error(this.getClass().getName()+":init:"+e);
-				fos = null;
-			}
-			if(fos != null)
-				logStream = new PrintWriter(fos,true);
-		}
+	// Logging
+		initLoggers();
 	// initialise dprt library
 		libdprt = new DpRtLibrary();
 		libdprt.setStatus(status);
@@ -171,6 +140,282 @@ public class DpRt
 	}
 
 	/**
+	 * Initialise log handlers. Called from init only, not re-configured on a REDATUM level reboot.
+	 * @see #init
+	 * @see #initLogHandlers
+	 * @see #copyLogHandlers
+	 * @see #errorLogger
+	 * @see #logLogger
+	 * @see #logFilter
+	 */
+	protected void initLoggers()
+	{
+	// errorLogger setup
+		errorLogger = LogManager.getLogger("error");
+		initLogHandlers(errorLogger);
+		errorLogger.setLogLevel(Logging.ALL);
+	// ngat.net error loggers
+		copyLogHandlers(errorLogger,LogManager.getLogger("ngat.net.TCPServer"),null);
+		copyLogHandlers(errorLogger,LogManager.getLogger("ngat.net.TCPServerConnectionThread"),null);
+		copyLogHandlers(errorLogger,LogManager.getLogger("ngat.net.TCPClientConnectionThreadMA"),null);
+	// logLogger setup
+		logLogger = LogManager.getLogger("log");
+		initLogHandlers(logLogger);
+		logLogger.setLogLevel(Logging.ALL);
+		logFilter = new BitFieldLogFilter(status.getLogLevel());
+		logLogger.setFilter(logFilter);
+	// DpRtLibrary logging logger
+		copyLogHandlers(logLogger,LogManager.getLogger("DpRtLibrary"),logFilter);
+	}
+
+	/**
+	 * Method to create and add all the handlers for the specified logger.
+	 * These handlers are in the status properties:
+	 * "dprt.log."+l.getName()+".handler."+index+".name" retrieves the relevant class name
+	 * for each handler.
+	 * @param l The logger.
+	 * @see #initFileLogHandler
+	 * @see #initConsoleLogHandler
+	 */
+	protected void initLogHandlers(Logger l)
+	{
+		LogHandler handler = null;
+		String handlerName = null;
+		int index = 0;
+
+		do
+		{
+			handlerName = status.getProperty("dprt.log."+l.getName()+".handler."+index+".name");
+			if(handlerName != null)
+			{
+				try
+				{
+					handler = null;
+					if(handlerName.equals("ngat.util.logging.FileLogHandler"))
+					{
+						handler = initFileLogHandler(l,index);
+					}
+					else if(handlerName.equals("ngat.util.logging.ConsoleLogHandler"))
+					{
+						handler = initConsoleLogHandler(l,index);
+					}
+					else if(handlerName.equals("ngat.util.logging.MulticastLogHandler"))
+					{
+						handler = initMulticastLogHandler(l,index);
+					}
+					else if(handlerName.equals("ngat.util.logging.MulticastLogRelay"))
+					{
+						handler = initMulticastLogRelay(l,index);
+					}
+					else
+					{
+						error("initLogHandlers:Unknown handler:"+handlerName);
+					}
+					if(handler != null)
+					{
+						handler.setLogLevel(Logging.ALL);
+						l.addHandler(handler);
+					}
+				}
+				catch(Exception e)
+				{
+					error("initLogHandlers:Adding Handler failed:",e);
+				}
+				index++;
+			}
+		}
+		while(handlerName != null);
+	}
+
+	/**
+	 * Routine to add a FileLogHandler to the specified logger.
+	 * The parameters to the constructor are stored in the status properties:
+	 * <ul>
+	 * <li>param.0 is the filename.
+	 * <li>param.1 is the formatter class name.
+	 * <li>param.2 is the record limit in each file.
+	 * <li>param.3 is the start index for file suffixes.
+	 * <li>param.4 is the end index for file suffixes.
+	 * <li>param.5 is a boolean saying whether to append to files.
+	 * </ul>
+	 * @param l The logger to add the handler to.
+	 * @param index The index in the property file of the handler we are adding.
+	 * @return A LogHandler of the relevant class is returned, if no exception occurs.
+	 * @exception NumberFormatException Thrown if the numeric parameters in the properties
+	 * 	file are not valid numbers.
+	 * @exception FileNotFoundException Thrown if the specified filename is not valid in some way.
+	 */
+	protected LogHandler initFileLogHandler(Logger l,int index) throws NumberFormatException,
+		FileNotFoundException
+	{
+		LogFormatter formatter = null;
+		LogHandler handler = null;
+		String fileName;
+		int recordLimit,fileStart,fileLimit;
+		boolean append;
+
+		fileName = status.getProperty("dprt.log."+l.getName()+".handler."+index+".param.0");
+		formatter = initLogFormatter("dprt.log."+l.getName()+".handler."+index+".param.1");
+		recordLimit = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.2");
+		fileStart = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.3");
+		fileLimit = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.4");
+		append = status.getPropertyBoolean("dprt.log."+l.getName()+".handler."+index+".param.5");
+		handler = new FileLogHandler(fileName,formatter,recordLimit,fileStart,fileLimit,append);
+		return handler;
+	}
+
+	/**
+	 * Routine to add a MulticastLogHandler to the specified logger.
+	 * The parameters to the constructor are stored in the status properties:
+	 * <ul>
+	 * <li>param.0 is the multicast group name i.e. "228.0.0.1".
+	 * <li>param.1 is the port number i.e. 5000.
+	 * <li>param.2 is the formatter class name.
+	 * </ul>
+	 * @param l The logger to add the handler to.
+	 * @param index The index in the property file of the handler we are adding.
+	 * @return A LogHandler of the relevant class is returned, if no exception occurs.
+	 * @exception IOException Thrown if the multicast socket cannot be created for some reason.
+	 */
+	protected LogHandler initMulticastLogHandler(Logger l,int index) throws IOException
+	{
+		LogFormatter formatter = null;
+		LogHandler handler = null;
+		String groupName = null;
+		int portNumber;
+
+		groupName = status.getProperty("dprt.log."+l.getName()+".handler."+index+".param.0");
+		portNumber = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.1");
+		formatter = initLogFormatter("dprt.log."+l.getName()+".handler."+index+".param.2");
+		handler = new MulticastLogHandler(groupName,portNumber,formatter);
+		return handler;
+	}
+
+	/**
+	 * Routine to add a MulticastLogRelay to the specified logger.
+	 * The parameters to the constructor are stored in the status properties:
+	 * <ul>
+	 * <li>param.0 is the multicast group name i.e. "228.0.0.1".
+	 * <li>param.1 is the port number i.e. 5000.
+	 * </ul>
+	 * @param l The logger to add the handler to.
+	 * @param index The index in the property file of the handler we are adding.
+	 * @return A LogHandler of the relevant class is returned, if no exception occurs.
+	 * @exception IOException Thrown if the multicast socket cannot be created for some reason.
+	 */
+	protected LogHandler initMulticastLogRelay(Logger l,int index) throws IOException
+	{
+		LogHandler handler = null;
+		String groupName = null;
+		int portNumber;
+
+		groupName = status.getProperty("dprt.log."+l.getName()+".handler."+index+".param.0");
+		portNumber = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.1");
+		handler = new MulticastLogRelay(groupName,portNumber);
+		return handler;
+	}
+
+	/**
+	 * Routine to add a ConsoleLogHandler to the specified logger.
+	 * The parameters to the constructor are stored in the status properties:
+	 * <ul>
+	 * <li>param.0 is the formatter class name.
+	 * </ul>
+	 * @param l The logger to add the handler to.
+	 * @param index The index in the property file of the handler we are adding.
+	 * @return A LogHandler of class FileLogHandler is returned, if no exception occurs.
+	 */
+	protected LogHandler initConsoleLogHandler(Logger l,int index)
+	{
+		LogFormatter formatter = null;
+		LogHandler handler = null;
+
+		formatter = initLogFormatter("dprt.log."+l.getName()+".handler."+index+".param.0");
+		handler = new ConsoleLogHandler(formatter);
+		return handler;
+	}
+
+	/**
+	 * Method to create an instance of a LogFormatter, given a property name
+	 * to retrieve it's details from. If the property does not exist, or the class does not exist
+	 * or an instance cannot be instansiated we try to return a ngat.util.logging.BogstanLogFormatter.
+	 * @param propertyName A property name, present in the status's properties, 
+	 * 	which has a value of a valid LogFormatter sub-class name. i.e.
+	 * 	<pre>dprt.log.log.handler.0.param.1 =ngat.util.logging.BogstanLogFormatter</pre>
+	 * @return An instance of LogFormatter is returned.
+	 */
+	protected LogFormatter initLogFormatter(String propertyName)
+	{
+		LogFormatter formatter = null;
+		String formatterName = null;
+		Class formatterClass = null;
+
+		formatterName = status.getProperty(propertyName);
+		if(formatterName == null)
+		{
+			error("initLogFormatter:NULL formatter for:"+propertyName);
+			formatterName = "ngat.util.logging.BogstanLogFormatter";
+		}
+		try
+		{
+			formatterClass = Class.forName(formatterName);
+		}
+		catch(ClassNotFoundException e)
+		{
+			error("initLogFormatter:Unknown class formatter:"+formatterName+
+				" from property "+propertyName);
+			formatterClass = BogstanLogFormatter.class;
+		}
+		try
+		{
+			formatter = (LogFormatter)formatterClass.newInstance();
+		}
+		catch(Exception e)
+		{
+			error("initLogFormatter:Cannot create instance of formatter:"+formatterName+
+				" from property "+propertyName);
+			formatter = (LogFormatter)new BogstanLogFormatter();
+		}
+	// set better date format if formatter allows this.
+	// Note we really need LogFormatter to generically allow us to do this
+		if(formatter instanceof BogstanLogFormatter)
+		{
+			BogstanLogFormatter blf = (BogstanLogFormatter)formatter;
+
+			blf.setDateFormat(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS z"));
+		}
+		if(formatter instanceof SimpleLogFormatter)
+		{
+			SimpleLogFormatter slf = (SimpleLogFormatter)formatter;
+
+			slf.setDateFormat(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS z"));
+		}
+		return formatter;
+	}
+
+	/**
+	 * Method to copy handlers from one logger to another.
+	 * @param inputLogger The logger to copy handlers from.
+	 * @param outputLogger The logger to copy handlers to.
+	 * @param lf The log filter to apply to the output logger. If this is null, the filter is not set.
+	 */
+	protected void copyLogHandlers(Logger inputLogger,Logger outputLogger,LogFilter lf)
+	{
+		LogHandler handlerList[] = null;
+		LogHandler handler = null;
+
+		handlerList = inputLogger.getHandlers();
+		for(int i = 0; i < handlerList.length; i++)
+		{
+			handler = handlerList[i];
+			outputLogger.addHandler(handler);
+		}
+		outputLogger.setLogLevel(inputLogger.getLogLevel());
+		if(lf != null)
+			outputLogger.setFilter(lf);
+	}
+
+	/**
 	 * This is the run routine. It starts a new server to handle incoming requests, and waits for the
 	 * server to terminate. A thread monitor is also started if it was requested from the command line.
 	 * @see #server
@@ -179,16 +424,18 @@ public class DpRt
 	private void run()
 	{
 		int threadMonitorUpdateTime;
+		Date nowDate = null;
 
 		server = new DpRtTCPServer("DPRT",serverPortNumber);
 		server.setDpRt(this);
 		server.setPriority(DpRtConstants.DPRT_THREAD_PRIORITY_SERVER);
-		server.setErrorStream(errorStream);
-		if(status.getLogLevel()>0)
-		{
-			logStream.println(this.getClass().getName()+":run:server started at:"+new Date().toString());
-			logStream.println(this.getClass().getName()+":run:server started on port:"+serverPortNumber);
-		}
+		nowDate = new Date();
+		log(DpRtConstants.DPRT_LOG_LEVEL_ALL,this.getClass().getName()+":run:server started at:"+
+		    nowDate.toString());
+		log(DpRtConstants.DPRT_LOG_LEVEL_ALL,this.getClass().getName()+":run:server started on port:"+
+		    serverPortNumber);
+		error(this.getClass().getName()+":run:server started at:"+nowDate.toString());
+		error(this.getClass().getName()+":run:server started on port:"+serverPortNumber);
 		if(threadMonitor)
 		{
 			threadMonitorFrame = new ThreadMonitorFrame(this.getClass().getName());
@@ -212,7 +459,7 @@ public class DpRt
 		}
 		catch(InterruptedException e)
 		{
-			errorStream.println(this.getClass().getName()+":run:"+e);
+			error(this.getClass().getName()+":run:"+e);
 		}
 	}
 
@@ -267,39 +514,67 @@ public class DpRt
 	}
 
 	/**
-	 * Get the error stream DPRT is writing errors to.
-	 * @return The error stream.
+	 * Method to set the level of logging filtered by the log level filter.
+	 * @param level An integer, used as a bit-field. Each bit set will allow
+	 *      any messages with that level bit set to be logged. e.g. 0 logs no messages,
+	 *      127 logs any messages with one of the first 8 bits set.
+	 * @see #logFilter
 	 */
-	public PrintWriter getErrorStream()
+	public void setLogLevelFilter(int level)
 	{
-		return errorStream;
+		logFilter.setLevel(level);
 	}
 
-
 	/**
-	 * Routine to write the string, terminted with a new-line, to the current log-file.
+	 * Routine to write the string to the relevant logger. If the relevant logger has not been
+	 * created yet the error gets written to System.out.
+	 * @param level The level of logging this message belongs to.
 	 * @param s The string to write.
-	 * @see #logStream
+	 * @see #logLogger
 	 */
-	public void log(String s)
+	public void log(int level,String s)
 	{
-		synchronized(logStream)
+		if(logLogger != null)
+			logLogger.log(level,s);
+		else
 		{
-			logStream.println(s);
+			if((status.getLogLevel()&level) > 0)
+				System.out.println(s);
 		}
 	}
 
 	/**
-	 * Routine to write the string, terminted with a new-line, to the current error-file.
+	 * Routine to write the string to the relevant logger. If the relevant logger has not been
+	 * created yet the error gets written to System.err.
 	 * @param s The string to write.
-	 * @see #errorStream
+	 * @see #errorLogger
+	 * @see DpRtConstants#DPRT_LOG_LEVEL_ERROR
 	 */
 	public void error(String s)
 	{
-		synchronized(errorStream)
+		if(errorLogger != null)
+			errorLogger.log(DpRtConstants.DPRT_LOG_LEVEL_ERROR,s);
+		else
+			System.err.println(s);
+	}
+
+	/**
+	 * Routine to write the string to the relevant logger. If the relevant logger has not been
+	 * created yet the error gets written to System.err.
+	 * @param s The string to write.
+	 * @param e An exception that caused the error to occur.
+	 * @see #errorLogger
+	 * @see DpRtConstants#DPRT_LOG_LEVEL_ERROR
+	 */
+	public void error(String s,Exception e)
+	{
+		if(errorLogger != null)
 		{
-			errorStream.println(s);
+			errorLogger.log(DpRtConstants.DPRT_LOG_LEVEL_ERROR,s,e);
+			errorLogger.dumpStack(DpRtConstants.DPRT_LOG_LEVEL_ERROR,e);
 		}
+		else
+			System.err.println(s+e);
 	}
 
 	/**
@@ -310,17 +585,21 @@ public class DpRt
 	 */
 	private void parseArgs(String[] args)
 	{
+		int logLevel;
+
 		for(int i = 0; i < args.length;i++)
 		{
 			if(args[i].equals("-l")||args[i].equals("-log"))
 			{
+				logLevel = Integer.parseInt(args[i+1]);
 				if((i+1)< args.length)
 				{
-					status.setLogLevel(Integer.parseInt(args[i+1]));
+					status.setLogLevel(logLevel);
+					setLogLevelFilter(logLevel);
 					i++;
 				}
 				else
-					errorStream.println("-log requires a log level");
+					System.err.println("-log requires a log level");
 			}
 			else if(args[i].equals("-s")||args[i].equals("-serverport"))
 			{
@@ -330,7 +609,7 @@ public class DpRt
 					i++;
 				}
 				else
-					errorStream.println("-serverport requires a port number");
+					System.err.println("-serverport requires a port number");
 			}
 			else if(args[i].equals("-t")||args[i].equals("-threadmonitor"))
 			{
@@ -342,7 +621,7 @@ public class DpRt
 				System.exit(0);
 			}
 			else
-				errorStream.println(this.getClass().getName()+"'"+args[i]+"' not a recognised option");
+				System.err.println(this.getClass().getName()+"'"+args[i]+"' not a recognised option");
 		}
 	}
 
@@ -379,6 +658,7 @@ public class DpRt
 	public static void main(String[] args)
 	{
 		DpRt dprt = new DpRt();
+
 		try
 		{
 			dprt.init();
@@ -394,7 +674,7 @@ public class DpRt
 		}
 		catch(Exception e)
 		{
-			dprt.errorStream.println(e.toString());
+			dprt.error("main:checkArgs failed",e);
 			System.exit(1);
 		}
 		dprt.run();
@@ -408,6 +688,10 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.8  2002/11/26 18:49:10  cjm
+// Added exception handling for initialise.
+// Added shutdown call.
+//
 // Revision 0.7  2002/05/20 14:14:39  cjm
 // Added setStatus call/initialise call.
 //
