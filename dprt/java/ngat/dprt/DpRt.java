@@ -1,5 +1,5 @@
 // DpRt.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.1 1999-06-21 15:49:42 dev Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.2 1999-06-24 11:26:22 dev Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -12,14 +12,14 @@ import ngat.util.*;
 /**
  * This class is the start point for the Data Pipeline (Real TIme Module).
  * @author Lee Howells
- * @version $Revision: 0.1 $
+ * @version $Revision: 0.2 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.1 1999-06-21 15:49:42 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.2 1999-06-24 11:26:22 dev Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -28,6 +28,10 @@ public class DpRt
 	 * The maximum port number.
 	 */
 	static final int MAXIMUM_PORT_NUMBER = 65535;
+	/**
+	 * The dprt library Java Interface. The dprt library contains all the C data reduction routines. 
+	 */
+	private DpRtLibrary libdprt = null;
 	/**
 	 * The server class that listens for connections.
 	 */
@@ -106,7 +110,12 @@ public class DpRt
 				fos = null;
 			}
 			if(fos != null)
+			{
+				// deprecated statement.
+				// This is the obly way to set System error stream for runtime (JVM) errors.
+				System.setErr(new PrintStream(fos));
 				errorStream = new PrintWriter(fos,true);
+			}
 		}
 	// change logStream to files defined in loaded properties
 		filename = status.getProperty("dprt.file.log");
@@ -124,6 +133,8 @@ public class DpRt
 			if(fos != null)
 				logStream = new PrintWriter(fos,true);
 		}
+	// initialise dprt library
+		libdprt = new DpRtLibrary();
 	// initialise port numbers from properties file
 		try
 		{
@@ -205,10 +216,21 @@ public class DpRt
 	/**
 	 * Get Socket Server instance.
 	 * @return The server instance.
+	 * @see #server
 	 */
 	public DpRtTCPServer getServer()
 	{
 		return server;
+	}
+
+	/**
+	 * Get the libdprt instance.
+	 * @return The library instance.
+	 * @see #libdprt
+	 */
+	public DpRtLibrary getDpRtLibrary()
+	{
+		return libdprt;
 	}
 
 	/**
@@ -359,4 +381,7 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.1  1999/06/21 15:49:42  dev
+// initial revision
+//
 //

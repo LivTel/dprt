@@ -1,19 +1,19 @@
 // DpRtConstants.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.1 1999-06-21 15:49:42 dev Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.2 1999-06-24 11:26:22 dev Exp $
 import java.lang.*;
 import java.io.*;
 
 /**
  * This class holds some constant values for the DpRt program. Currently, this consists of error codes.
  * @author Lee Howells
- * @version $Revision: 0.1 $
+ * @version $Revision: 0.2 $
  */
 public class DpRtConstants
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.1 1999-06-21 15:49:42 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.2 1999-06-24 11:26:22 dev Exp $");
 
 	/**
 	 * Error code. No error.
@@ -37,11 +37,6 @@ public class DpRtConstants
 	public final static int DPRT_ERROR_CODE_ABORT	 	= 4;
 
 	/**
-	 * Error code. PROCESS command failed.
-	 */
-	public final static int DPRT_ERROR_CODE_PROCESS 	= 20;
-
-	/**
 	 * Thread priority level. This is for the server thread. Currently this has the highest priority,
 	 * so that new connections are always immediately accepted.
 	 */
@@ -60,4 +55,7 @@ public class DpRtConstants
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.1  1999/06/21 15:49:42  dev
+// initial revision
+//
 //

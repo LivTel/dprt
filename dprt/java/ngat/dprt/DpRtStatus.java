@@ -1,5 +1,5 @@
 // DpRtStatus.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtStatus.java,v 0.1 1999-06-21 15:49:42 dev Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtStatus.java,v 0.2 1999-06-24 11:26:22 dev Exp $
 import java.lang.*;
 import java.io.*;
 import java.util.*;
@@ -8,14 +8,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class holds status information for the DpRt program.
  * @author Chris Mottram
- * @version $Revision: 0.1 $
+ * @version $Revision: 0.2 $
  */
 public class DpRtStatus
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtStatus.java,v 0.1 1999-06-21 15:49:42 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRtStatus.java,v 0.2 1999-06-24 11:26:22 dev Exp $");
 	/**
 	 * File name containing properties for dprt.
 	 */
@@ -101,6 +101,8 @@ public class DpRtStatus
 	{
 		INST_TO_DP currentCommand = null;
 
+		if(currentThread == null)
+			return true;
 		currentCommand = (INST_TO_DP)currentThread.getCommand();
 		if(currentCommand == null)
 			return true;
@@ -179,5 +181,8 @@ public class DpRtStatus
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.1  1999/06/21 15:49:42  dev
+// initial revision
+//
 //
 
