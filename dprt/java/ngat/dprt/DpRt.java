@@ -1,5 +1,5 @@
 // DpRt.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.9 2004-01-30 17:01:00 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.10 2004-03-04 18:54:39 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -10,19 +10,18 @@ import java.util.*;
 import ngat.net.*;
 import ngat.util.*;
 import ngat.util.logging.*;
-/* diddly import ngat.ccd.*;*/
 
 /**
  * This class is the start point for the Data Pipeline (Real Time Module).
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.9 $
+ * @version $Revision: 0.10 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.9 2004-01-30 17:01:00 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.10 2004-03-04 18:54:39 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -231,12 +230,18 @@ public class DpRt
 	 * Routine to add a FileLogHandler to the specified logger.
 	 * The parameters to the constructor are stored in the status properties:
 	 * <ul>
-	 * <li>param.0 is the filename.
-	 * <li>param.1 is the formatter class name.
-	 * <li>param.2 is the record limit in each file.
-	 * <li>param.3 is the start index for file suffixes.
-	 * <li>param.4 is the end index for file suffixes.
-	 * <li>param.5 is a boolean saying whether to append to files.
+	 * <li><b>param.0</b> is the filename.
+	 * <li><b>param.1</b> is the formatter class name.
+	 * <li><b>param.2</b> is the record limit in each file.
+	 * <li><b>param.3</b> is the start index for file suffixes.
+	 * <li><b>param.4</b> is the end index for file suffixes.
+	 * <li><b>param.5</b> is a boolean saying whether to append to files.
+	 * </ul>
+	 * If there are 3 parameters, we create a time period file log handler with parameters:
+	 * <ul>
+	 * <li><b>param.0</b> is the filename.
+	 * <li><b>param.1</b> is the formatter class name.
+	 * <li><b>param.2</b> is the time period, either 'HOURLY_ROTATION','DAILY_ROTATION' or 'WEEKLY_ROTATION'.
 	 * </ul>
 	 * @param l The logger to add the handler to.
 	 * @param index The index in the property file of the handler we are adding.
@@ -244,6 +249,13 @@ public class DpRt
 	 * @exception NumberFormatException Thrown if the numeric parameters in the properties
 	 * 	file are not valid numbers.
 	 * @exception FileNotFoundException Thrown if the specified filename is not valid in some way.
+	 * @see #status
+	 * @see #initLogFormatter
+	 * @see SupIRCamStatus#getProperty
+	 * @see SupIRCamStatus#getPropertyInteger
+	 * @see SupIRCamStatus#getPropertyBoolean
+	 * @see SupIRCamStatus#propertyContainsKey
+	 * @see SupIRCamStatus#getPropertyLogHandlerTimePeriod
 	 */
 	protected LogHandler initFileLogHandler(Logger l,int index) throws NumberFormatException,
 		FileNotFoundException
@@ -251,16 +263,28 @@ public class DpRt
 		LogFormatter formatter = null;
 		LogHandler handler = null;
 		String fileName;
-		int recordLimit,fileStart,fileLimit;
+		int recordLimit,fileStart,fileLimit,timePeriod;
 		boolean append;
 
 		fileName = status.getProperty("dprt.log."+l.getName()+".handler."+index+".param.0");
 		formatter = initLogFormatter("dprt.log."+l.getName()+".handler."+index+".param.1");
-		recordLimit = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.2");
-		fileStart = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.3");
-		fileLimit = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.4");
-		append = status.getPropertyBoolean("dprt.log."+l.getName()+".handler."+index+".param.5");
-		handler = new FileLogHandler(fileName,formatter,recordLimit,fileStart,fileLimit,append);
+		// if we have more then 3 parameters, we are using a recordLimit FileLogHandler
+		// rather than a time period log handler.
+		if(status.propertyContainsKey("dprt.log."+l.getName()+".handler."+index+".param.3"))
+		{
+			recordLimit = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.2");
+			fileStart = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.3");
+			fileLimit = status.getPropertyInteger("dprt.log."+l.getName()+".handler."+index+".param.4");
+			append = status.getPropertyBoolean("dprt.log."+l.getName()+".handler."+index+".param.5");
+			handler = new FileLogHandler(fileName,formatter,recordLimit,fileStart,fileLimit,append);
+		}
+		else
+		{
+			// This is a time period log handler.
+			timePeriod = status.getPropertyLogHandlerTimePeriod("dprt.log."+l.getName()+".handler."+
+									    index+".param.2");
+			handler = new FileLogHandler(fileName,formatter,timePeriod);
+		}
 		return handler;
 	}
 
@@ -688,6 +712,10 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.9  2004/01/30 17:01:00  cjm
+// Changed to new logging code (ngat.util.logging).
+// Deleted old errorStream.
+//
 // Revision 0.8  2002/11/26 18:49:10  cjm
 // Added exception handling for initialise.
 // Added shutdown call.
