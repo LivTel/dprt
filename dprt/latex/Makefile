@@ -1,4 +1,4 @@
-# $Header: /space/home/eng/cjm/cvs/dprt/latex/Makefile,v 0.1 1999-08-24 15:48:30 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/latex/Makefile,v 0.2 1999-09-08 13:59:10 cjm Exp $
 
 include ../../Makefile.common
 include ../Makefile.common
@@ -39,13 +39,16 @@ tidy:
 	$(RM) $(RM_OPTIONS) $(LATEX_TIDY_OPTIONS) $(TIDY_OPTIONS)
 
 checkin:
-	-$(CI) $(TEXSRCS) $(FIGSRCS)
+	-$(CI) $(CI_OPTIONS) $(TEXSRCS) $(FIGSRCS)
 
 checkout:
 	-$(CO) $(CO_OPTIONS) $(TEXSRCS) $(FIGSRCS)
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.1  1999/08/24 15:48:30  cjm
+# initial revision.
+#
 #
 
 # DO NOT DELETE
