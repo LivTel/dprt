@@ -1,5 +1,5 @@
 // DpRtLibrary.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.1 1999-06-24 10:54:52 dev Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.2 2002-05-20 14:15:42 cjm Exp $
 import java.lang.*;
 import java.io.*;
 
@@ -10,16 +10,30 @@ import ngat.message.INST_DP.*;
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
  * FITS file data reduction.
  * @author Lee Howells LJMU
- * @version $Revision: 0.1 $
+ * @version $Revision: 0.2 $
  */
 class DpRtLibrary
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.1 1999-06-24 10:54:52 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.2 2002-05-20 14:15:42 cjm Exp $");
 
 // DpRt.h
+	/**
+	 * Native wrapper to a libdprt routine that finalizes any global references the C layer uses.
+	 */
+	private native void DpRt_Finalise_References();
+	/**
+	 * Native wrapper to a libdprt routine that stores the DpRtStatus reference. This is used
+	 * to retrieve properties from the Java property file from the C layer.
+	 * @param status The instance of DpRtStatus.
+	 */
+	private native void DpRt_Set_Status(DpRtStatus status);
+	/**
+	 * Native wrapper to a libdprt routine that performs any initialisation the C layer needs.
+	 */
+	private native void DpRt_Initialise();
 	/**
 	 * Native wrapper to a libdprt routine to reduce an input calibrate FITS image.
 	 * @param inputFilename A string giving the location of the input filename.
@@ -46,7 +60,49 @@ class DpRtLibrary
 		System.loadLibrary("dprt");
 	}
 
+	/**
+	 * Constructor.
+	 */
+	public DpRtLibrary()
+	{
+		super();
+	}
+
+	/**
+	 * Finalize method for this class, delete JNI global references.
+	 * @see #finaliseReferences
+	 */
+	protected void finalize() throws Throwable
+	{
+		super.finalize();
+		DpRt_Finalise_References();
+	}
+
 // DpRt.h
+	/**
+	 * Method to set the libraries reference to the DpRt Status object.
+	 * This is used when querying properties from the C layer.
+	 * This method should be called after DpRtLibrary instance has been constructed, before initialise
+	 * (which may wish to query the properties). 
+	 * @param status The instance of DpRtStatus to use.
+	 * @see #DpRt_Set_Status
+	 * @see #initialise
+	 */
+	public void setStatus(DpRtStatus status)
+	{
+		DpRt_Set_Status(status);
+	}
+
+	/**
+	 * Method called after construction of the DpRtLibrary instance, to allow the C layer
+	 * to perform any initialisation it requires.
+	 * @see #DpRt_Initialise
+	 */
+	public void initialise()
+	{
+		DpRt_Initialise();
+	}
+
 	/**
 	 * Routine to call to reduce a calibration FITS file. The filename is processed. The resultant data is passed
 	 * back to the Java layer in the calibrateReduceDone object, which is then sent over the network to
@@ -54,7 +110,7 @@ class DpRtLibrary
 	 * @param inputFilename The string representation of the filename.
 	 * @param calibrateReduceDone The calibrate reduce done object, 
 	 * 	that will be filled in with the processed filename and
-	 * 	useful data the data pipeline has extracted (peak and mean Counts).
+	 * 	useful data the data pipeline has extracted (peak and mean counts).
 	 */
 	public void DpRtCalibrateReduce(String inputFilename,CALIBRATE_REDUCE_DONE calibrateReduceDone)
 	{
@@ -112,4 +168,7 @@ class DpRtLibrary
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.1  1999/06/24 10:54:52  dev
+// initial revision
+//
 //
