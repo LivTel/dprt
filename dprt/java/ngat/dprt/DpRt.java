@@ -1,5 +1,6 @@
 // DpRt.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.10 2004-03-04 18:54:39 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.11 2004-03-31 08:40:01 cjm Exp $
+package ngat.dprt;
 
 import java.lang.*;
 import java.io.*;
@@ -14,14 +15,14 @@ import ngat.util.logging.*;
 /**
  * This class is the start point for the Data Pipeline (Real Time Module).
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.10 $
+ * @version $Revision: 0.11 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.10 2004-03-04 18:54:39 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.11 2004-03-31 08:40:01 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -33,7 +34,7 @@ public class DpRt
 	/**
 	 * The dprt library Java Interface. The dprt library contains all the C data reduction routines. 
 	 */
-	private DpRtLibrary libdprt = null;
+	private DpRtLibraryInterface libdprt = null;
 	/**
 	 * The server class that listens for connections.
 	 */
@@ -67,52 +68,81 @@ public class DpRt
 	 * The thread monitor window.
 	 */
 	private ThreadMonitorFrame threadMonitorFrame = null;
+	/**
+	 * The configuration property filename passed in as an argument to the DpRt.
+	 */
+	protected String configurationFilename = null;
+	/**
+	 * The log level passed in as an argument to the DpRt.
+	 */
+	protected int logLevelArgument = 0;
 
 	/**
-	 * This is the initialisation routine. This creates the <a href="#status">status</a> object. 
+	 * This is the initialisation routine. This creates the <b>status</b> object. 
 	 * The properties for the application are loaded into the status object. 
+	 * The interface to the DpRtLibraryInterface implementation is initialised by calling <b>initLibDpRt</b>.
 	 * The error and log files are initialised using <b>initLoggers</b>.
-	 * @see #status
 	 * @exception FileNotFoundException Thrown if the property file cannot be found.
 	 * @exception IOException Thrown if the property file cannot be accessed and the properties cannot
 	 * 	be loaded for some reason.
 	 * @exception NumberFormatException Thrown if getting a port number from the configuration file that
 	 * 	is not a valid integer.
 	 * @exception DpRtLibraryNativeException Thrown if the C library initialisation fails.
+	 * @exception Exception Thrown if <b>initLibDpRt</b> fails.
+	 * @see #status
+	 * @see #configurationFilename
+	 * @see #initLibDpRt
 	 * @see #initLoggers
+	 * @see #logLevelArgument
 	 */
-	private void init() throws FileNotFoundException,IOException,NumberFormatException,DpRtLibraryNativeException
+	private void init() throws FileNotFoundException,IOException,NumberFormatException,DpRtLibraryNativeException,
+				   Exception
 	{
 		int time;
 
 	// create status object and load properties into it
 		status = new DpRtStatus();
+		status.setLogLevel(logLevelArgument);
 		try
 		{
-			status.load();
+			// if the arguments contained  a configuration filename, use that, else use the default.
+			if(configurationFilename != null)
+				status.load(configurationFilename);
+			else
+				status.load();
 		}
 		catch(FileNotFoundException e)
 		{
-			error(this.getClass().getName()+":init:loading properties:"+e);
+			error(this.getClass().getName()+":init:loading properties:",e);
 			throw e;
 		}
 		catch(IOException e)
 		{
-			error(this.getClass().getName()+":init:loading properties:"+e);
+			error(this.getClass().getName()+":init:loading properties:",e);
 			throw e;
 		}
 	// Logging
 		initLoggers();
-	// initialise dprt library
-		libdprt = new DpRtLibrary();
+	// construct dprt library instance
+		try
+		{
+			initLibDpRt();
+		}
+		catch(Exception e)
+		{
+			error(this.getClass().getName()+":init:initialsing DpRtLibrary instance:",e);
+			throw e;
+		}
+		// set libraries status reference
 		libdprt.setStatus(status);
+		// initialise dprt library
 		try
 		{
 			libdprt.initialise();
 		}
 		catch(DpRtLibraryNativeException e)
 		{
-			error(this.getClass().getName()+":init:initialsing C library:"+e);
+			error(this.getClass().getName()+":init:initialsing C library:",e);
 			throw e;
 		}
 	// initialise port numbers from properties file
@@ -122,7 +152,7 @@ public class DpRt
 		}
 		catch(NumberFormatException e)
 		{
-			error(this.getClass().getName()+":init:initialsing port number:"+e);
+			error(this.getClass().getName()+":init:initialsing port number:",e);
 			throw e;
 		}
 	// initialise default connection response times from properties file
@@ -133,13 +163,50 @@ public class DpRt
 		}
 		catch(NumberFormatException e)
 		{
-			error(this.getClass().getName()+":init:initialsing server connection thread times:"+e);
+			error(this.getClass().getName()+":init:initialsing server connection thread times:",e);
 			// don't throw the error - failing to get this property is not 'vital' to dprt.
 		}		
 	}
 
 	/**
+	 * Create the object that implements the DpRtLibraryInterface. This is the instrument specific
+	 * Java object that calls down to the right C library via JNI.
+	 * Relies on the status object having it's properties loaded from configuration file.
+	 * The &quot;dprt.dprtlibrary.implementation&quot; property contains the class name of the
+	 * dprt library implementation.
+	 * The created instance is stored in the <b>libdprt</b> field.
+	 * @exception NullPointerException Thrown if the implementation class name string is null.
+	 * @exception ClassNotFoundException Thrown if the specified class does not exist (in the classpath).
+	 * @exception InstantiationException Thrown if the specified class's null parameter construcor fails.
+	 * @exception IllegalAccessException Thrown if the specified class's null parameter construcor fails.
+	 * @see #status
+	 * @see #libdprt
+	 */
+	protected void initLibDpRt() throws NullPointerException,ClassNotFoundException,InstantiationException,
+					    IllegalAccessException
+	{
+		String className = null;
+		Class cl = null;
+
+		// get class name
+		className = status.getProperty("dprt.dprtlibrary.implmentation");
+		if(className == null)
+		{
+			throw new NullPointerException(this.getClass().getName()+
+						       ":initLibDpRt:implementation class name was null.");
+		}
+		// get Class object associated with class name
+		cl = Class.forName(className);
+		// call null parameter constructor to get instance. 
+		libdprt = (DpRtLibraryInterface)cl.newInstance();
+
+	}
+
+	/**
 	 * Initialise log handlers. Called from init only, not re-configured on a REDATUM level reboot.
+	 * The libdprt instance handlers are copied using the <i>dprt.dprtlibrary.implmentation</i> property
+	 * to get the classname of the logger to copy to. This means the <b>status</b> object must exist.
+	 * @see #status
 	 * @see #init
 	 * @see #initLogHandlers
 	 * @see #copyLogHandlers
@@ -164,7 +231,8 @@ public class DpRt
 		logFilter = new BitFieldLogFilter(status.getLogLevel());
 		logLogger.setFilter(logFilter);
 	// DpRtLibrary logging logger
-		copyLogHandlers(logLogger,LogManager.getLogger("DpRtLibrary"),logFilter);
+		copyLogHandlers(logLogger,LogManager.getLogger(status.getProperty("dprt.dprtlibrary.implmentation")),
+				logFilter);
 	}
 
 	/**
@@ -251,11 +319,11 @@ public class DpRt
 	 * @exception FileNotFoundException Thrown if the specified filename is not valid in some way.
 	 * @see #status
 	 * @see #initLogFormatter
-	 * @see SupIRCamStatus#getProperty
-	 * @see SupIRCamStatus#getPropertyInteger
-	 * @see SupIRCamStatus#getPropertyBoolean
-	 * @see SupIRCamStatus#propertyContainsKey
-	 * @see SupIRCamStatus#getPropertyLogHandlerTimePeriod
+	 * @see DpRtStatus#getProperty
+	 * @see DpRtStatus#getPropertyInteger
+	 * @see DpRtStatus#getPropertyBoolean
+	 * @see DpRtStatus#propertyContainsKey
+	 * @see DpRtStatus#getPropertyLogHandlerTimePeriod
 	 */
 	protected LogHandler initFileLogHandler(Logger l,int index) throws NumberFormatException,
 		FileNotFoundException
@@ -493,7 +561,7 @@ public class DpRt
  	 * fails, the error method is called.
 	 * @see #error
 	 * @see DpRtTCPServer#close
-	 * @see DpRtLibrary#shutdown
+	 * @see DpRtLibraryInterface#shutdown
 	 */
 	public void close()
 	{
@@ -523,7 +591,7 @@ public class DpRt
 	 * @return The library instance.
 	 * @see #libdprt
 	 */
-	public DpRtLibrary getDpRtLibrary()
+	public DpRtLibraryInterface getDpRtLibrary()
 	{
 		return libdprt;
 	}
@@ -598,28 +666,40 @@ public class DpRt
 			errorLogger.dumpStack(DpRtConstants.DPRT_LOG_LEVEL_ERROR,e);
 		}
 		else
+		{
 			System.err.println(s+e);
+			e.printStackTrace(System.err);
+		}
 	}
 
 	/**
 	 * This routine parses arguments passed into DpRt.
+	 * @exception NumberFormatException Thrown if an illegal number argument is encountered.
+	 * @see #configurationFilename
+	 * @see #logLevelArgument
 	 * @see #serverPortNumber
 	 * @see #threadMonitor
 	 * @see #help
 	 */
-	private void parseArgs(String[] args)
+	private void parseArgs(String[] args) throws NumberFormatException
 	{
-		int logLevel;
-
 		for(int i = 0; i < args.length;i++)
 		{
-			if(args[i].equals("-l")||args[i].equals("-log"))
+			if(args[i].equals("-c")||args[i].equals("-config"))
 			{
-				logLevel = Integer.parseInt(args[i+1]);
 				if((i+1)< args.length)
 				{
-					status.setLogLevel(logLevel);
-					setLogLevelFilter(logLevel);
+					configurationFilename = args[i+1];
+					i++;
+				}
+				else
+					System.err.println("-config requires a filename");
+			}
+			else if(args[i].equals("-l")||args[i].equals("-log"))
+			{
+				if((i+1)< args.length)
+				{
+					logLevelArgument = Integer.parseInt(args[i+1]);
 					i++;
 				}
 				else
@@ -671,8 +751,9 @@ public class DpRt
 		System.out.println(this.getClass().getName()+" Help:");
 		System.out.println("DpRt is the 'Data Pipeline', which process FITS files passed to it.");
 		System.out.println("Options are:");
+		System.out.println("\t-c[onfig] <filename> - Configuration filename.");
+		System.out.println("\t-l[og] <log level> - Log level.");
 		System.out.println("\t-s[erverport] <port number> - Port to wait for client connections on.");
-		System.out.println("\t-l[og] <log level> - log level.");
 		System.out.println("\t-t[hreadmonitor] - show thread monitor.");
 	}
 
@@ -685,13 +766,22 @@ public class DpRt
 
 		try
 		{
+			dprt.parseArgs(args);
+		}
+		catch(Exception e)
+		{
+			dprt.error("dprt:parseArgs failed:",e);
+			System.exit(1);
+		}
+		try
+		{
 			dprt.init();
 		}
 		catch(Exception e)
 		{
+			dprt.error("dprt:init failed:",e);
 			System.exit(1);
 		}
-		dprt.parseArgs(args);
 		try
 		{
 			dprt.checkArgs();
@@ -712,6 +802,9 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.10  2004/03/04 18:54:39  cjm
+// Changed initFileLogHandler to allow time period log files.
+//
 // Revision 0.9  2004/01/30 17:01:00  cjm
 // Changed to new logging code (ngat.util.logging).
 // Deleted old errorStream.
