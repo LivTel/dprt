@@ -1,5 +1,5 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/Makefile,v 1.2 2001-05-15 16:41:06 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/Makefile,v 1.3 2001-05-15 16:44:52 cjm Exp $ 
 
 include ../Makefile.common
 include Makefile.common
@@ -25,7 +25,7 @@ checkout:
 	done;
 
 depend:
-	echo checkout in c...; cd c; $(MAKE) depend
+	echo No depend rule in dprt...
 
 clean:
 	$(RM) $(RM_OPTIONS) $(TIDY_OPTIONS)
@@ -52,6 +52,9 @@ backup: tidy checkin
 	compress $(BACKUP_DIR)/dprt.tar
 
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2001/05/15 16:41:06  cjm
+# Directory changes.
+#
 # Revision 1.1  1999/12/10 12:26:20  cjm
 # Initial revision
 #
