@@ -1,5 +1,5 @@
-// DpRt.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.7 2002-05-20 14:14:39 cjm Exp $
+// DpRt.java
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.8 2002-11-26 18:49:10 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -13,14 +13,14 @@ import ngat.ccd.*;
 /**
  * This class is the start point for the Data Pipeline (Real TIme Module).
  * @author Lee Howells
- * @version $Revision: 0.7 $
+ * @version $Revision: 0.8 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.7 2002-05-20 14:14:39 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.8 2002-11-26 18:49:10 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -74,8 +74,9 @@ public class DpRt
 	 * 	be loaded for some reason.
 	 * @exception NumberFormatException Thrown if getting a port number from the configuration file that
 	 * 	is not a valid integer.
+	 * @exception DpRtLibraryNativeException Thrown if the C library initialisation fails.
 	 */
-	private void init() throws FileNotFoundException,IOException,NumberFormatException
+	private void init() throws FileNotFoundException,IOException,NumberFormatException,DpRtLibraryNativeException
 	{
 		String filename = null;
 		FileOutputStream fos = null;
@@ -137,7 +138,15 @@ public class DpRt
 	// initialise dprt library
 		libdprt = new DpRtLibrary();
 		libdprt.setStatus(status);
-		libdprt.initialise();
+		try
+		{
+			libdprt.initialise();
+		}
+		catch(DpRtLibraryNativeException e)
+		{
+			error(this.getClass().getName()+":init:initialsing C library:"+e);
+			throw e;
+		}
 	// initialise port numbers from properties file
 		try
 		{
@@ -209,11 +218,23 @@ public class DpRt
 
 	/**
 	 * Routine to be called at the end of execution of DpRt to close down communications.
-	 * Currently closes DpRtTCPServer.
+	 * Closes DpRtTCPServer, and calls the DprtLibrary instance shutdown method. If the shutdown method
+ 	 * fails, the error method is called.
+	 * @see #error
+	 * @see DpRtTCPServer#close
+	 * @see DpRtLibrary#shutdown
 	 */
 	public void close()
 	{
 		server.close();
+		try
+		{
+			libdprt.shutdown();
+		}
+		catch(DpRtLibraryNativeException e)
+		{
+			error(this.getClass().getName()+":close:shutting down C library:"+e);
+		}
 	}
 
 	/**
@@ -387,6 +408,9 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.7  2002/05/20 14:14:39  cjm
+// Added setStatus call/initialise call.
+//
 // Revision 0.6  2001/05/17 10:18:24  cjm
 // Fixed Exception catching bug when getting threadMonitorUpdateTime from status.
 //
