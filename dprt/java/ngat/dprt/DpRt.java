@@ -1,5 +1,5 @@
 // DpRt.java -*- mode: Fundamental;-*-
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.2 1999-06-24 11:26:22 dev Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.3 1999-10-22 17:06:53 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -8,18 +8,19 @@ import java.util.*;
 
 import ngat.net.*;
 import ngat.util.*;
+import ngat.ccd.*;
 
 /**
  * This class is the start point for the Data Pipeline (Real TIme Module).
  * @author Lee Howells
- * @version $Revision: 0.2 $
+ * @version $Revision: 0.3 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.2 1999-06-24 11:26:22 dev Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.3 1999-10-22 17:06:53 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -381,6 +382,9 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.2  1999/06/24 11:26:22  dev
+// "Backup"
+//
 // Revision 0.1  1999/06/21 15:49:42  dev
 // initial revision
 //
