@@ -1,5 +1,24 @@
+/*   
+    Copyright 2006, Astrophysics Research Institute, Liverpool John Moores University.
+
+    This file is part of DpRt.
+
+    DpRt is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    DpRt is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with DpRt; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 // DpRt.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.13 2004-04-15 14:07:20 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.14 2006-05-16 17:09:34 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -15,14 +34,14 @@ import ngat.util.logging.*;
 /**
  * This class is the start point for the Data Pipeline (Real Time Module).
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.13 $
+ * @version $Revision: 0.14 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.13 2004-04-15 14:07:20 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.14 2006-05-16 17:09:34 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -802,6 +821,9 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.13  2004/04/15 14:07:20  cjm
+// Fixed logger copy failure due to property missspelling on DpRtLibrary implementation.
+//
 // Revision 0.12  2004/04/15 11:16:26  cjm
 // Fixed dprt.dprtlibrary.implementation name (added 'e').
 //

@@ -1,5 +1,24 @@
+/*   
+    Copyright 2006, Astrophysics Research Institute, Liverpool John Moores University.
+
+    This file is part of DpRt.
+
+    DpRt is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    DpRt is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with DpRt; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ftspec/DpRtLibrary.java,v 1.1 2004-04-14 15:21:09 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ftspec/DpRtLibrary.java,v 1.2 2006-05-16 17:10:59 cjm Exp $
 package ngat.dprt.ftspec;
 
 import java.lang.*;
@@ -14,14 +33,14 @@ import ngat.util.logging.*;
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
  * FITS file data reduction, for the FT Spectrograph (FTSpec).
  * @author Chris Mottram LJMU
- * @version $Revision: 1.1 $
+ * @version $Revision: 1.2 $
  */
 public class DpRtLibrary implements DpRtLibraryInterface
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 1.1 2004-04-14 15:21:09 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 1.2 2006-05-16 17:10:59 cjm Exp $");
 
 // DpRt.h
 	/**
@@ -273,4 +292,7 @@ public class DpRtLibrary implements DpRtLibraryInterface
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.1  2004/04/14 15:21:09  cjm
+// Initial revision
+//
 //

@@ -1,5 +1,24 @@
+/*   
+    Copyright 2006, Astrophysics Research Institute, Liverpool John Moores University.
+
+    This file is part of DpRt.
+
+    DpRt is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    DpRt is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with DpRt; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 // DpRtLibraryNativeException.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtLibraryNativeException.java,v 1.2 2004-03-31 08:40:01 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtLibraryNativeException.java,v 1.3 2006-05-16 17:09:36 cjm Exp $
 package ngat.dprt;
 
 /**
@@ -7,14 +26,14 @@ package ngat.dprt;
  * error. The individual parts of the error generated are stored in the exception.
  * The JNI interface itself can also generate these exceptions.
  * @author Chris Mottram
- * @version $Revision: 1.2 $
+ * @version $Revision: 1.3 $
  */
 public class DpRtLibraryNativeException extends Exception
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibraryNativeException.java,v 1.2 2004-03-31 08:40:01 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibraryNativeException.java,v 1.3 2006-05-16 17:09:36 cjm Exp $");
 	/**
 	 * The current value of the error number in the DpRtLibrary.c module.
 	 */
@@ -110,6 +129,9 @@ public class DpRtLibraryNativeException extends Exception
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.2  2004/03/31 08:40:01  cjm
+// Repackaged into ngat.dprt.
+//
 // Revision 1.1  2004/03/30 09:22:23  cjm
 // Initial revision
 //

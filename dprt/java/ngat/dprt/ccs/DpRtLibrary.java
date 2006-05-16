@@ -1,5 +1,24 @@
+/*   
+    Copyright 2006, Astrophysics Research Institute, Liverpool John Moores University.
+
+    This file is part of DpRt.
+
+    DpRt is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    DpRt is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with DpRt; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.6 2005-03-31 13:19:16 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.7 2006-05-16 17:10:38 cjm Exp $
 package ngat.dprt.ccs;
 
 import java.lang.*;
@@ -15,14 +34,14 @@ import ngat.util.logging.*;
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
  * FITS file data reduction, for the CCD Control System (CCS).
  * @author Chris Mottram LJMU
- * @version $Revision: 0.6 $
+ * @version $Revision: 0.7 $
  */
 public class DpRtLibrary implements DpRtLibraryInterface
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.6 2005-03-31 13:19:16 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.7 2006-05-16 17:10:38 cjm Exp $");
 	/**
 	 * Instance of FITS filename handling code, for lock file code.
 	 */
@@ -418,6 +437,12 @@ public class DpRtLibrary implements DpRtLibraryInterface
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.6  2005/03/31 13:19:16  cjm
+// Added lockReducedFilename and unlockReducedFilename methods.
+// Called when reducing calibration and exposure frames, to create a lock file
+// around files that are being reduced. This is so another process
+// can be monitoring the directory and transfer completely reduced FITS images elsewhere.
+//
 // Revision 0.5  2004/03/31 08:45:30  cjm
 // Repackaged into ngat.dprt.ccs.
 // DpRtLibrary now ccs specific. C library now called dprt_ccs.

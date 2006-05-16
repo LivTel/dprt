@@ -1,5 +1,24 @@
+/*   
+    Copyright 2006, Astrophysics Research Institute, Liverpool John Moores University.
+
+    This file is part of DpRt.
+
+    DpRt is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    DpRt is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with DpRt; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 // DpRtConstants.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.5 2005-03-31 13:19:37 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.6 2006-05-16 17:09:33 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -8,14 +27,14 @@ import java.io.*;
 /**
  * This class holds some constant values for the DpRt program. Currently, this consists of error codes.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.5 $
+ * @version $Revision: 0.6 $
  */
 public class DpRtConstants
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.5 2005-03-31 13:19:37 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.6 2006-05-16 17:09:33 cjm Exp $");
 
 	/**
 	 * Error code. No error.
@@ -91,6 +110,9 @@ public class DpRtConstants
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.5  2005/03/31 13:19:37  cjm
+// Added DPRT_LOG_LEVEL_LOCKFILES constant.
+//
 // Revision 0.4  2004/03/31 08:40:01  cjm
 // Repackaged into ngat.dprt.
 //
