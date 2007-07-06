@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.17 2006-06-26 15:53:26 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.18 2007-07-06 13:19:25 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -22,7 +22,7 @@ CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properti
 		spectrograph.dprt.properties nuview1.dprt.properties ratcam1.dprt.properties
 CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
 
-DIRS 		= ccs scs supircam ftspec grope
+DIRS 		= ccs scs supircam ftspec grope frodospec
 
 top: $(OBJS) config
 	@for i in $(DIRS); \
@@ -77,6 +77,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.17  2006/06/26 15:53:26  cjm
+# Added ftspec2.dprt.properties.
+#
 # Revision 0.16  2005/11/29 15:42:59  cjm
 # Added ratcam1 configs, and grope dprtlibrary.
 #
