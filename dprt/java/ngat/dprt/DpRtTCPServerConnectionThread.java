@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtTCPServerConnectionThread.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.12 2006-05-16 17:09:39 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.13 2007-08-21 15:23:02 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -33,14 +33,14 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.12 $
+ * @version $Revision: 0.13 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.12 2006-05-16 17:09:39 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.13 2007-08-21 15:23:02 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
@@ -301,7 +301,8 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 			done = exposeReduceDone;
 			if(testAbort() == true)
 				return;
-			dprt.getDpRtLibrary().DpRtExposeReduce(exposeReduceCommand.getFilename(),exposeReduceDone);
+			dprt.getDpRtLibrary().DpRtExposeReduce(exposeReduceCommand.getFilename(),
+							       exposeReduceCommand.getWcsFit(),exposeReduceDone);
 			if(exposeReduceDone.getSuccessful() == false)
 			{
 				dprt.error(this.getClass().getName()+":run:"+command.getClass().getName()+":"+
@@ -375,6 +376,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.12  2006/05/16 17:09:39  cjm
+// gnuify: Added GNU General Public License.
+//
 // Revision 0.11  2004/03/31 08:40:01  cjm
 // Repackaged into ngat.dprt.
 // Also comments changed to new interface.
