@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtConstants.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.6 2006-05-16 17:09:33 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtConstants.java,v 0.7 2007-08-21 17:55:06 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -27,14 +27,14 @@ import java.io.*;
 /**
  * This class holds some constant values for the DpRt program. Currently, this consists of error codes.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.6 $
+ * @version $Revision: 0.7 $
  */
 public class DpRtConstants
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.6 2006-05-16 17:09:33 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtConstants.java,v 0.7 2007-08-21 17:55:06 cjm Exp $");
 
 	/**
 	 * Error code. No error.
@@ -80,6 +80,10 @@ public class DpRtConstants
 	 */
 	public final static int DPRT_LOG_LEVEL_LOCKFILES       		= (1<<2);
 	/**
+	 * Logging level. Log script information.
+	 */
+	public final static int DPRT_LOG_LEVEL_SCRIPT       		= (1<<3);
+	/**
 	 * Logging level. Log if any logging is turned on.
 	 * Note libdprt_object reserves bits 16-24.
 	 */
@@ -110,6 +114,9 @@ public class DpRtConstants
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.6  2006/05/16 17:09:33  cjm
+// gnuify: Added GNU General Public License.
+//
 // Revision 0.5  2005/03/31 13:19:37  cjm
 // Added DPRT_LOG_LEVEL_LOCKFILES constant.
 //
