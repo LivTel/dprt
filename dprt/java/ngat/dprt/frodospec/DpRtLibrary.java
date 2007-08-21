@@ -18,8 +18,8 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/frodospec/DpRtLibrary.java,v 1.2 2006-05-16 17:10:59 cjm Exp $
-package ngat.dprt.ftspec;
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/frodospec/DpRtLibrary.java,v 1.3 2007-08-21 15:36:08 cjm Exp $
+package ngat.dprt.frodospec;
 
 import java.lang.*;
 import java.io.*;
@@ -31,16 +31,16 @@ import ngat.util.logging.*;
 
 /**
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
- * FITS file data reduction, for the FT Spectrograph (FTSpec).
+ * FITS file data reduction, for FrodoSpec.
  * @author Chris Mottram LJMU
- * @version $Revision: 1.2 $
+ * @version $Revision: 1.3 $
  */
 public class DpRtLibrary implements DpRtLibraryInterface
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 1.2 2006-05-16 17:10:59 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 1.3 2007-08-21 15:36:08 cjm Exp $");
 
 // DpRt.h
 	/**
@@ -119,7 +119,7 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 */
 	static
 	{
-		System.loadLibrary("dprt_ftspec");
+		System.loadLibrary("dprt_frodospec");
 	}
 
 	/**
@@ -213,11 +213,12 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 * back to the Java layer in the exposeReduceDone object, which is then sent over the network to
 	 * tell the client the process has been completed.
 	 * @param inputFilename The string representation of the filename.
+	 * @param wcsFit A boolean, if true invoke something that tries to WCS fit the reduced image.
 	 * @param exposeReduceDone The expose reduce done object, 
 	 * 	that will be filled in with the processed filename and
 	 * 	useful data the data pipeline has extracted (FWHM, Counts and location of brightest object etc).
 	 */
-	public void DpRtExposeReduce(String inputFilename,EXPOSE_REDUCE_DONE exposeReduceDone)
+	public void DpRtExposeReduce(String inputFilename,boolean wcsFit,EXPOSE_REDUCE_DONE exposeReduceDone)
 	{
 		// DpRt_Expose_Reduce is a Java Native routine that actually does the work.
 		// It will return TRUE even when the Data Pipeline failed - the exposeReduceDone object
@@ -292,7 +293,4 @@ public class DpRtLibrary implements DpRtLibraryInterface
 }
 //
 // $Log: not supported by cvs2svn $
-// Revision 1.1  2004/04/14 15:21:09  cjm
-// Initial revision
-//
 //
