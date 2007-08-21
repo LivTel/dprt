@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtLibraryInterface.java,v 1.2 2006-05-16 17:09:35 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtLibraryInterface.java,v 1.3 2007-08-21 15:21:14 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -33,7 +33,7 @@ import ngat.util.logging.*;
  * FITS file data reduction.
  * Classes implementing this interface link to the specific DpRt C library for a particular instrument.
  * @author Chris Mottram LJMU
- * @version $Revision: 1.2 $
+ * @version $Revision: 1.3 $
  */
 public interface DpRtLibraryInterface
 {
@@ -68,11 +68,12 @@ public interface DpRtLibraryInterface
 	 * back to the Java layer in the exposeReduceDone object, which is then sent over the network to
 	 * tell the client the process has been completed.
 	 * @param inputFilename The string representation of the filename.
+	 * @param wcsFit A boolean, if true invoke something that tries to WCS fit the reduced image.
 	 * @param exposeReduceDone The expose reduce done object, 
 	 * 	that will be filled in with the processed filename and
 	 * 	useful data the data pipeline has extracted (FWHM, Counts and location of brightest object etc).
 	 */
-	public void DpRtExposeReduce(String inputFilename,EXPOSE_REDUCE_DONE exposeReduceDone);
+	public void DpRtExposeReduce(String inputFilename,boolean wcsFit,EXPOSE_REDUCE_DONE exposeReduceDone);
 	/**
 	 * Routine to call to create a master bias FITS file. Any Bias frames in the directory specified are processed.
 	 * @param dirname A string containing the directory path to look for Bias frames in.
@@ -92,6 +93,9 @@ public interface DpRtLibraryInterface
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.2  2006/05/16 17:09:35  cjm
+// gnuify: Added GNU General Public License.
+//
 // Revision 1.1  2004/03/31 08:40:01  cjm
 // Initial revision
 //
