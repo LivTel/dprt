@@ -1,0 +1,18 @@
+#!/bin/csh
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/blank_wcs_fit,v 1.1 2007-09-03 14:07:25 cjm Exp $
+if( $#argv != 2) then
+	/bin/echo "blank_wcs_fit <reduced filename> <wcs-fitted filename>"
+	exit 1
+endif
+set reduced_filename = $1
+set wcs_fitted_filename = $2
+/bin/echo "blank_wcs_fit <${reduced_filename}> <${wcs_fitted_filename}>"
+#
+# Set returned value
+#
+set retval = 0
+/bin/echo "blank_wcs_fit : Returning: ${retval}"
+exit ${retval}
+#
+# $Log: not supported by cvs2svn $
+#
