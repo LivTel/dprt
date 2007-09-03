@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // SendDpRtCommand.java
-// $Header: /space/home/eng/cjm/cvs/dprt/test/SendDpRtCommand.java,v 1.4 2006-05-16 16:55:38 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/test/SendDpRtCommand.java,v 1.5 2007-09-03 13:39:56 cjm Exp $
 
 import java.lang.*;
 import java.io.*;
@@ -31,7 +31,7 @@ import ngat.util.*;
 /**
  * This class send a DpRt command to the DpRt. 
  * @author Chris Mottram
- * @version $Revision: 1.4 $
+ * @version $Revision: 1.5 $
  */
 public class SendDpRtCommand
 {
@@ -120,6 +120,10 @@ public class SendDpRtCommand
 	 * If we are sending a REBOOT command, this defines the level of reboot.
 	 */
 	private int rebootLevel = 1;
+	/**
+	 * If we are sending an EXPOSE_REDUCE, whether to set the wcsFit flag to true.
+	 */
+	private boolean wcsFit = false;
 
 	/**
 	 * This is the initialisation routine.
@@ -136,6 +140,7 @@ public class SendDpRtCommand
 	 * @see #commandType
 	 * @see #filename
 	 * @see #rebootLevel
+	 * @see #wcsFit
 	 */
 	private INST_TO_DP createCommand() throws Exception
 	{
@@ -155,6 +160,7 @@ public class SendDpRtCommand
 
 				exposeReduce = new EXPOSE_REDUCE("SendDpRtCommand");
 				exposeReduce.setFilename(filename);
+				exposeReduce.setWcsFit(wcsFit);
 				command = (INST_TO_DP)exposeReduce;
 				break;
 			case COMMAND_TYPE_MAKE_MASTER_BIAS:
@@ -304,6 +310,7 @@ public class SendDpRtCommand
 	 * @see #dprtPortNumber
 	 * @see #address
 	 * @see #help
+	 * @see #wcsFit
 	 * @see #COMMAND_TYPE_CALIBRATE_REDUCE
 	 * @see #COMMAND_TYPE_EXPOSE_REDUCE
 	 * @see #COMMAND_TYPE_ABORT
@@ -410,6 +417,10 @@ public class SendDpRtCommand
 			{
 					commandType = COMMAND_TYPE_STOP;
 			}
+			else if(args[i].equals("-w")||args[i].equals("-wcs_fit"))
+			{
+					wcsFit = true;
+			}
 			else
 				System.out.println(this.getClass().getName()+":Option not supported:"+args[i]);
 		}
@@ -431,6 +442,7 @@ public class SendDpRtCommand
 		System.out.println("\t-[make_master_flat]|[mf] <directory> - Send make master flat command.");
 		System.out.println("\t-r[eboot] <level> - Send reboot command.");
 		System.out.println("\t-s[top] - Send stop command.");
+		System.out.println("\t-w[cs_fit] - (Expose Reduce command only) Set WCS Fit flag.");
 		System.out.println("The default DpRt port is "+DEFAULT_DPRT_PORT_NUMBER+".");
 	}
 
@@ -472,6 +484,9 @@ public class SendDpRtCommand
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.4  2006/05/16 16:55:38  cjm
+// gnuify: Added GNU General Public License.
+//
 // Revision 1.3  2003/06/06 12:59:31  cjm
 // backup.
 //
