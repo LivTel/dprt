@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.7 2006-05-16 17:10:38 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.8 2007-09-04 13:01:38 cjm Exp $
 package ngat.dprt.ccs;
 
 import java.lang.*;
@@ -28,28 +28,37 @@ import ngat.dprt.*;
 import ngat.fits.*;
 import ngat.message.base.*;
 import ngat.message.INST_DP.*;
+import ngat.util.*;
 import ngat.util.logging.*;
 
 /**
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
  * FITS file data reduction, for the CCD Control System (CCS).
  * @author Chris Mottram LJMU
- * @version $Revision: 0.7 $
+ * @version $Revision: 0.8 $
  */
 public class DpRtLibrary implements DpRtLibraryInterface
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.7 2006-05-16 17:10:38 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.8 2007-09-04 13:01:38 cjm Exp $");
 	/**
-	 * Instance of FITS filename handling code, for lock file code.
+	 * Instance of FITS filename handling code, for lock file/ pipeline processing code.
 	 */
 	protected FitsFilename fitsFilename = null;
 	/**
 	 * The logger for this DpRtLibrary.
 	 */
 	protected Logger logger = null;
+	/**
+	 * The instance of ngat.util.ExecuteCommand used to run any WCS scripts.
+	 */
+	protected ExecuteCommand executeCommand = null;
+	/**
+	 * Copy of the DpRt status object, used for property retrieval.
+	 */
+	protected DpRtStatus status = null;
 
 // DpRt.h
 	/**
@@ -163,16 +172,18 @@ public class DpRtLibrary implements DpRtLibraryInterface
 // DpRt.h
 	/**
 	 * Method to set the libraries reference to the DpRt Status object.
-	 * This is used when querying properties from the C layer.
+	 * This is used when querying properties from the C and Java layer.
 	 * This method should be called after DpRtLibrary instance has been constructed, before initialise
 	 * (which may wish to query the properties). 
 	 * @param status The instance of DpRtStatus to use.
 	 * @see #DpRt_Set_Status
 	 * @see #initialise
+	 * @see #status
 	 */
-	public void setStatus(DpRtStatus status)
+	public void setStatus(DpRtStatus s)
 	{
-		DpRt_Set_Status(status);
+		status = s;
+		DpRt_Set_Status(s);
 	}
 
 	/**
@@ -237,15 +248,23 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 * file based on the input filename, so that a script monitoring dprt output can tell when we have
 	 * finished with a reduced filename.
 	 * @param inputFilename The string representation of the filename.
+	 * @param wcsFit A boolean, if true invoke something that tries to WCS fit the reduced image.
 	 * @param exposeReduceDone The expose reduce done object, 
 	 * 	that will be filled in with the processed filename and
 	 * 	useful data the data pipeline has extracted (FWHM, Counts and location of brightest object etc).
 	 * @see #lockReducedFilename
 	 * @see #unlockReducedFilename
+	 * @see #getProcessedFilename
+	 * @see #wcsFit
 	 */
-	public void DpRtExposeReduce(String inputFilename,EXPOSE_REDUCE_DONE exposeReduceDone)
+	public void DpRtExposeReduce(String inputFilename,boolean wcsFit,EXPOSE_REDUCE_DONE exposeReduceDone)
 	{
+		String processedFilename = null;
+		String wcsFittedFilename = null;
+
 		lockReducedFilename(inputFilename);
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,this.getClass().getName()+
+				   ":DpRtExposeReduce("+inputFilename+").");
 		// DpRt_Expose_Reduce is a Java Native routine that actually does the work.
 		// It will return TRUE even when the Data Pipeline failed - the exposeReduceDone object
 		// contains the getSuccessful and getErrorNum routine to determine whether the 
@@ -259,6 +278,45 @@ public class DpRtLibrary implements DpRtLibraryInterface
 			exposeReduceDone.setErrorNum(1);
 			exposeReduceDone.setErrorString(this.getClass().getName()+
 				":DpRtExposeReduce:JNI interface failed.");
+			// unlock and return on error
+			unlockReducedFilename(inputFilename);
+			return;
+		}
+		// wcsFit if true
+		if(wcsFit)
+		{
+			try
+			{
+				logger.log(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,this.getClass().getName()+
+					   ":DpRtExposeReduce: Attempting wcsFit.");
+				// Get L1 pipeline filename
+				processedFilename = getProcessedFilename(inputFilename,
+								  FitsFilename.PIPELINE_PROCESSING_FLAG_REAL_TIME);
+				// call wcs Fit command
+				wcsFittedFilename = wcsFit(processedFilename);
+				// reset returned filename to WCS fitted one
+				exposeReduceDone.setFilename(wcsFittedFilename);
+				logger.log(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,this.getClass().getName()+
+					   ":DpRtExposeReduce: Finished wcsFit.");
+			}
+			catch(Exception e)
+			{
+				logger.log(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,this.getClass().getName()+
+					   ":DpRtExposeReduce: wcsFit failed : "+e);
+				logger.dumpStack(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,e);
+				exposeReduceDone.setSuccessful(false);
+				exposeReduceDone.setErrorNum(1);
+				exposeReduceDone.setErrorString(this.getClass().getName()+
+								":DpRtExposeReduce:wcsFit failed.");
+				// unlock and return on error
+				unlockReducedFilename(inputFilename);
+				return;
+			}
+		}
+		else
+		{
+			logger.log(DpRtConstants.DPRT_LOG_LEVEL_COMMANDS,this.getClass().getName()+
+				   ":DpRtExposeReduce:wcsFit was false: Not performing wcsFit.");
 		}
 		unlockReducedFilename(inputFilename);
 	}
@@ -312,10 +370,20 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	/**
 	 * Routine to abort a reduction. This is done by calling an underlying C routine to set a variable.
 	 * The variable should be checked at regular intervals by the Data Pipeline process.
+	 * If a command script is running (for WCS fitting, for instance), this is also aborted.
+	 * @see #executeCommand
+	 * @see ngat.util.ExecuteCommand#abort
 	 */
 	public void DpRtAbort()
 	{
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_LOCKFILES,this.getClass().getName()+":DpRtAbort: Started.");
 		DpRt_Abort();
+		if(executeCommand != null)
+		{
+			logger.log(DpRtConstants.DPRT_LOG_LEVEL_LOCKFILES,this.getClass().getName()+
+				   ":DpRtAbort: Aborting running command.");
+			executeCommand.abort();
+		}
 	}
 
 	/**
@@ -434,9 +502,115 @@ public class DpRtLibrary implements DpRtLibraryInterface
 				   ":getLockFilename: lock filename : "+lockFilename+".");
 		return lockFilename;
 	}
+
+	/**
+	 * Method to create a processed filename based on the unreduced filename. 
+	 * @param unreducedFilename A string containing the unreduced FITS filename. 
+	 * @param pipelineProcessingFlag Which processing flag to create the new filename for. Should be one of:
+	 *       FitsFilename.PIPELINE_PROCESSING_FLAG_REAL_TIME, FitsFilename.PIPELINE_PROCESSING_FLAG_OFF_LINE
+	 * @return A String containing the processed filename. This
+	 *        should have a pipeline processing flag set.
+	 *        This method can return 'null', if a parse error occurs.
+	 * @exception Exception Thrown if the unreducedFilename cannot be parsed, or the pipelineProcessingFlag
+	 *           is an illegal value.
+	 * @see #fitsFilename
+	 * @see #logger
+	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_REAL_TIME
+	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_OFF_LINE
+	 * @see ngat.dprt.DpRtConstants.DPRT_LOG_LEVEL_LOCKFILES
+	 */
+	protected String getProcessedFilename(String unreducedFilename,String pipelineProcessingFlag) throws Exception
+	{
+		String processedFilename = null;
+
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,this.getClass().getName()+
+			   ":getProcessedFilename: Generating processed filename based on "+
+			   unreducedFilename+".");
+		fitsFilename.parse(unreducedFilename);
+		fitsFilename.setPipelineProcessing(pipelineProcessingFlag);
+		processedFilename = fitsFilename.getFilename();
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,this.getClass().getName()+
+				   ":getProcessedFilename: processed filename : "+processedFilename+".");
+		return processedFilename;
+	}
+
+	/**
+	 * Do WCS fitting on the reduced filename.
+	 * @param reducedFilename The L1 (debiased/darked/flat-fielded) filename.
+	 * @return The L2 (WCS fitted) FITS filename.
+	 * @exception Exception Thrown if the WCS fit fails (the script fails). Or getProcessedFilename fails.
+	 * @see #getProcessedFilename
+	 * @see #runScript
+	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_OFF_LINE
+	 */
+	protected String wcsFit(String reducedFilename) throws Exception
+	{
+		String commandLine = null;
+		String scriptName = null;
+		String wcsFittedFilename = null;
+
+		// Get L2 pipeline filename
+		wcsFittedFilename = getProcessedFilename(reducedFilename,
+							 FitsFilename.PIPELINE_PROCESSING_FLAG_OFF_LINE);
+		// get script name
+		scriptName = status.getProperty("dprt.wcs_fit.script_filename");
+		if(scriptName == null)
+		{
+			throw new NullPointerException(this.getClass().getName()+":wcsFit:script filename was null.");
+		}
+		// construct command line
+		commandLine = new String(scriptName+" "+reducedFilename+" "+wcsFittedFilename);
+		// run script
+		// If script fails, or returns non-zero, an exception is throw by runScript, that is propogated
+		// upwards.
+		runScript(commandLine);
+		// return fitted filename
+		return wcsFittedFilename;
+	}
+
+	/**
+	 * Run a script. A new instance of executeCommand is created and the script executed. Any errors
+	 * are thrown as an exception.
+	 * @param commandLine The command line of the script to run.
+	 * @exception Exception A rethrow of the exception generated by ExecuteCommand, or by getExitValue not being 0.
+	 * @see #executeCommand
+	 */
+	protected void runScript(String commandLine) throws Exception
+	{
+		executeCommand = new ExecuteCommand(commandLine);
+		//executeCommand.setCommandString(commandLine);
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,this.getClass().getName()+
+				   ":runScript: About to run: "+commandLine+".");
+		executeCommand.run();
+		if(executeCommand.getException() != null)
+		{
+			logger.log(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,this.getClass().getName()+
+				   ":runScript: Command returned exception: "+executeCommand.getException()+".");
+			logger.dumpStack(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,executeCommand.getException());
+			throw executeCommand.getException();
+		}
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,this.getClass().getName()+
+				   ":runScript: Command returned output: "+executeCommand.getOutputString()+".");
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,this.getClass().getName()+
+				   ":runScript: Command returned error: "+executeCommand.getErrorString()+".");
+		logger.log(DpRtConstants.DPRT_LOG_LEVEL_SCRIPT,this.getClass().getName()+
+				   ":runScript: Command returned exit value: "+executeCommand.getExitValue()+".");
+		if(executeCommand.getExitValue() != 0)
+		{
+			throw new Exception(this.getClass().getName()+":runScript:exit value was not zero:"+
+					    executeCommand.getExitValue()+":error string:"+
+					    executeCommand.getErrorString()+".");
+		}
+		// reset this instance of executeCommand to null.
+		// This means it's abort method will not be called if DpRtAbort is called.
+		executeCommand = null;
+	}
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.7  2006/05/16 17:10:38  cjm
+// gnuify: Added GNU General Public License.
+//
 // Revision 0.6  2005/03/31 13:19:16  cjm
 // Added lockReducedFilename and unlockReducedFilename methods.
 // Called when reducing calibration and exposure frames, to create a lock file
