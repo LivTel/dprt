@@ -1,5 +1,5 @@
 #!/bin/csh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/blank_wcs_fit,v 1.1 2007-09-03 14:07:25 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/blank_wcs_fit,v 1.2 2007-09-04 13:42:55 cjm Exp $
 if( $#argv != 2) then
 	/bin/echo "blank_wcs_fit <reduced filename> <wcs-fitted filename>"
 	exit 1
@@ -7,6 +7,8 @@ endif
 set reduced_filename = $1
 set wcs_fitted_filename = $2
 /bin/echo "blank_wcs_fit <${reduced_filename}> <${wcs_fitted_filename}>"
+set now_date_string = `/bin/date "+%Y-%m-%dT%H:%M:%S"`
+/bin/echo "blank_wcs_fit <${reduced_filename}> <${wcs_fitted_filename}>" > ~dev/tmp/blank_wcs_fit_${now_date_string}.txt
 #
 # Set returned value
 #
@@ -15,4 +17,7 @@ set retval = 0
 exit ${retval}
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2007/09/03 14:07:25  cjm
+# Initial revision
+#
 #
