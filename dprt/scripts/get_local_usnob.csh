@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/tcsh
 # To transform the USNOB local raw to the final *.usnob
 # scri.csh <arcmin_search> <RA> <DEC> 
 
@@ -17,13 +17,28 @@ set i=1
 
 if ( ! ${?MYBIN} ) then
     if ( -d /icc/wcs_fit/bin/ ) then
-	setenv MYBIN = /icc/wcs_fit/bin/
+	setenv MYBIN /icc/wcs_fit/bin/
     else if ( -d /usr/local/bin/wcs/ ) then
-	setenv MYBIN = /usr/local/bin/wcs/
+	setenv MYBIN /usr/local/bin/wcs/
     else
 	/bin/echo "get_local_usnob.csh : Failed to find a binary dir."
 	exit 2
     endif
+endif
+
+#
+# Which awk shall we use?
+# Linux : /bin/awk is good
+# Solaris (7/8) : /bin/awk does not have advanced printf functionality (used by rd.awk), /usr/xpg4/bin/awk does
+#
+set os_name = `/bin/uname`
+if ( "${os_name}" == "SunOS" ) then
+    set awk_bin = "/usr/xpg4/bin/awk"
+else if ( "${os_name}" == "Linux" ) then
+    set awk_bin = "/bin/awk"
+else
+	/bin/echo "get_local_usnob.csh : Unknown OS name : ${os_name}."
+	exit 6
 endif
 
 # TMP_DIR
@@ -51,10 +66,10 @@ if ( ! -d ${RUT} ) then
 endif
 
 
-/bin/echo "get_local_usnob.csh : ${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:rt}.ori"
-${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:rt}.ori
+/bin/echo "get_local_usnob.csh : ${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:r:t}.ori"
+${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:r:t}.ori
 
-setenv N_DET `/bin/awk '/#--- / {print $2}' ${TMP_DIR}/${FIL:rt}.ori `
+setenv N_DET `${awk_bin} '/#--- / {print $2}' ${TMP_DIR}/${FIL:r:t}.ori `
 
 setenv CZZ `/bin/echo "$SID / 60." | /usr/bin/bc -l`
 
@@ -89,11 +104,14 @@ setenv CZZ `/bin/echo "$SID / 60." | /usr/bin/bc -l`
 /bin/echo "#           1|            2|      3|      4|      5|      6|      7|      8|      9|" >> ${FIL}
 
 
-/bin/awk -f ${MYBIN}rd.awk  ${TMP_DIR}/${FIL:rt}.ori >> ${FIL}
+${awk_bin} -f ${MYBIN}rd.awk  ${TMP_DIR}/${FIL:r:t}.ori >> ${FIL}
 
-/usr/bin/test -f ${TMP_DIR}/${FIL:rt}.ori && /bin/rm -f ${TMP_DIR}/${FIL:rt}.ori
+/usr/bin/test -f ${TMP_DIR}/${FIL:r:t}.ori && /bin/rm -f ${TMP_DIR}/${FIL:r:t}.ori
 
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2007/09/24 13:31:23  cjm
+# Initial revision
+#
 #
