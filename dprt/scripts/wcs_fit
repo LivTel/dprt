@@ -1,0 +1,740 @@
+#!/bin/tcsh
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.1 2007-09-24 09:56:34 cjm Exp $
+# wcs_fit <input FITS filename> <output FITS filename> 
+if ( $#argv != 2) then
+	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
+	exit 1
+endif
+# input_fits_filename inpfile
+set inpfile = $1
+set output_fits_filename = $2
+if( ! -e ${inpfile} ) then
+	/bin/echo "wcs_fit : Failed to find input filename : ${inpfile}."
+	exit 2
+endif
+#
+# Global variables
+#
+set ASFIT_STATUS = 0  # 0 if the astrometric fit is OK, 1 when it fails
+#
+# USNOB configuration
+# Where are the local files?
+#
+if ( -d /mnt/catalogues/usnob1/usnob1 ) then
+	setenv USNOB_LOCAL_DIR "/mnt/catalogues/usnob1/usnob1"
+else
+	/bin/echo "wcs_fit : Failed to find USNOB1 local directory."
+	exit 3
+endif
+#
+# Setup and Config Parameters
+#
+set MAX_SEx_STARS	= 500	# If Sextractor returns more than this, we think there is a problem and incease detection sigma from the default
+set MAX_N_STARS 	= 20    # Max number of stars to select from the CCD image. The brightest N will be used in the wcs fit
+set THR_FRACTION 	= 50	# (%) Per centage of catalogue stars which must bet matched in image for good fit
+set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth attempting a fit
+set MAX_ROT_CHANGE 	= 5	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
+set MAX_POINT_CHANGE 	= 120	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
+set MAX_FIT_RESIDUAL	= 1	# (arcsec) Integer. Largest mean fit residual before we suspect WCS fit failure
+# See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
+
+if ( -d /home/dev/tmp ) then
+	set base_tmp_dir = /home/dev/tmp
+else if ( -d /icc/tmp ) then
+	set base_tmp_dir = /icc/tmp
+else
+	/bin/echo "wcs_fit : Failed to find a base tmp dir."
+	exit 27
+endif
+set TMP_DIR 		= ${base_tmp_dir}/wcs
+if ( -d /icc/wcs_fit/bin/ ) then
+    set MYBIN 		= /icc/wcs_fit/bin/
+else if ( -d /usr/local/bin/wcs/ ) then
+    set MYBIN 		= /usr/local/bin/wcs/
+else
+	/bin/echo "wcs_fit : Failed to find a binary dir."
+	exit 26
+endif
+if ( ! $?PATH ) then
+    setenv PATH ".:/bin/:/usr/bin/"
+endif
+setenv PATH ${PATH}:${MYBIN}
+# LD_LIBRARY_PATH
+if ( ! $?LD_LIBRARY_PATH ) then
+    setenv LD_LIBRARY_PATH "."
+endif
+foreach dir ( /icc/bin/lib/${HOSTTYPE} )
+      echo $LD_LIBRARY_PATH | grep $dir > /dev/null
+      if ( $status != 0 ) then
+	  setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${dir}
+      endif
+end
+#
+# Which awk shall we use?
+# Linux : /bin/awk is good
+# Solaris (7/8) : /bin/awk does not have ENVIRON functionality, /usr/xpg4/bin/awk does
+#
+set os_name = `/bin/uname`
+if ( "${os_name}" == "SunOS" ) then
+    set awk_bin = "/usr/xpg4/bin/awk"
+else if ( "${os_name}" == "Linux" ) then
+    set awk_bin = "/bin/awk"
+else
+	/bin/echo "wcs_fit : Unknown OS name : ${os_name}."
+	exit 28
+endif
+
+# Initialising variable
+set N_STARS		= 0
+set N_STARS_TAKEN	= 0
+set NMATCH		= 0
+
+#
+# We want a clean file without the WCS towards the end of the script to act as the 
+# basis of building the final output file. To provide this we make a copy of the original
+# input file. If the input file already has a WCS, we run remove_wcs.csh on it
+/bin/cp $inpfile ${inpfile}.bak
+
+
+/bin/echo "wcs_fit : Starting processing ${inpfile}."
+
+#
+# There are various instrument dependent parameters. For each intrument we need to define
+# APERTURE offset applied in the RCS
+# Fixpix parameters to clean bad pixels
+# number of connected pixels in source detection varies with binning. Used by SExtractor
+# CAT_SEARCH_RADIUS depends on the FOV of the instrument. Rule of thumb, set RADIUS = full FOV diameter
+# 
+set INSTRUMENT = `${MYBIN}gethead -u INSTRUME $inpfile| ${awk_bin} '{print $1}'`
+set BINNING = `${MYBIN}gethead -u CCDXBIN $inpfile`
+set do_fixpix = 0
+set fixpix_param = ""
+
+if ( ( $BINNING < 1) || ($BINNING > 2 ) )  then
+    /bin/echo "Binning value appears to be neither 1 or 2. We currently only handle 1x1 and 2x2."
+    exit 11
+endif
+
+switch ( $INSTRUMENT )
+    case 'RATCam' :
+	# Use _ instead of minus sign -
+	# Prior to 2007-07-11 parameters were 36, -33
+	# 2007-07-11 Aperture set to 26, -47
+	# 2007-09-14 Following realuminization, Aperture = -39, -32
+	set APERTUREX = _39
+	set APERTUREY = _32
+
+	if ( $BINNING == 2 ) then
+	  set do_fixpix = 1
+	  set fixpix_param = "362 479 362 1024"
+	  set DETECT_MINAREA = 9
+	else if ( $BINNING == 1 ) then
+	  set do_fixpix = 1
+	  set fixpix_param = "723 958 723 2048"
+	  set DETECT_MINAREA = 18
+	endif
+
+	set CAT_SEARCH_RADIUS = 4
+
+	breaksw
+    case 'SupIRCam' :
+	echo THIS IS SUPIRCAM
+	# Use _ instead of minus sign -
+	# 2007-04-04 25,5
+	# 2007-09-14 15,0
+	set APERTUREX = 10
+	set APERTUREY = 0
+
+  	# No fixpix set yet, but may be useful. There are ugly pixels on the chip.
+  	set do_fixpix = 0
+
+	set DETECT_MINAREA = 5
+
+	set CAT_SEARCH_RADIUS = 2
+
+	breaksw
+    case 'HawkCam1' :
+	# Use _ instead of minus sign -
+	set APERTUREX = _31
+	set APERTUREY = _14
+
+	# Cosmetically perfect chip
+	set do_fixpix = 0
+	
+	if ( $BINNING == 2 ) then
+	  set DETECT_MINAREA = 9
+	else if ( $BINNING == 1 ) then
+	  set DETECT_MINAREA = 18
+	endif
+
+	set CAT_SEARCH_RADIUS = 4
+
+	breaksw
+    case 'HawkCam2' :
+	# Use _ instead of minus sign -
+	set APERTUREX = 42
+	set APERTUREY = _14
+
+	# Cosmetically perfect chip
+	set do_fixpix = 0
+  
+	if ( $BINNING == 2 ) then
+	  set DETECT_MINAREA = 9
+	else if ( $BINNING == 1 ) then
+	  set DETECT_MINAREA = 18
+	endif
+
+	set CAT_SEARCH_RADIUS = 4
+
+	breaksw
+    default :
+	echo Instrument not recognized. 
+	exit 12
+endsw
+
+# If this instrument has a bad pixel mask, apply it. Note that this is only on a temp
+# copy of the image for source detection. The final output image will not have had
+# fixpix applied.
+if ( $do_fixpix ) then
+  ${MYBIN}fixpix ${inpfile} $fixpix_param 
+endif
+
+############# SExtractor #############
+/bin/echo "Starting SEx Pipe: ${inpfile}"
+/bin/echo "${MYBIN}sex -c ${MYBIN}astrom_pipe.sex ${inpfile}"
+${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -DETECT_MINAREA $DETECT_MINAREA ${inpfile}
+############# ---------- #############
+
+###Below: managing the sex files image.dat->wcs.cat
+###       Preparing the extracted source catalog for matching
+
+# Flags to identify specific error states. These are not used much. 
+set SEx_failed = 0
+set too_few_stars = 0
+set SEx_format_error = 0
+
+if ( ! -s image.cat ) then
+	/bin/echo "wcs_fit : SEx did not write image.cat : No WCS fit will be possible"
+	set SEx_failed = 1
+	exit 4
+endif
+
+/bin/mv -f image.cat  ${TMP_DIR}/${inpfile:r:t}_image.cat
+set N_STARS = `${awk_bin} '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat | /usr/bin/wc -l | ${awk_bin} '{print $1}'`
+/bin/echo "wcs_fit : Number of sources extracted by SEx: $N_STARS"
+
+if ( $N_STARS > $MAX_SEx_STARS ) then
+    set SKY_RMS = `${MYBIN}iterstat 5 $inpfile | ${awk_bin} -F = 'NR==4 {print $2}' | ${awk_bin} '{print $1}'`
+    set SEx_THRESH = `/bin/echo "$SKY_RMS 5 * p" | /usr/bin/dc`
+    /bin/echo "${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile"
+    ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile
+    set N_STARS = `${awk_bin} '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat| /usr/bin/wc -l | ${awk_bin} '{print $1}'`
+    /bin/echo "wcs_fit : Number of sources extracted by SEx at $SEx_THRESH=$SEx_THRESH (5 iterstat sigma) : $N_STARS"
+  endif
+
+if ( $N_STARS < $MIN_N_STARS ) then
+	/bin/echo "wcs_fit : Too few sources. Astrometric fit not possible."
+    	set too_few_stars = 1 
+	exit 5
+endif
+
+#sorting compilation with MAG_BEST
+setenv MAG_BEST_FIELD `${awk_bin} '($3=="MAG_BEST") {print $2}' ${TMP_DIR}/${inpfile:r:t}_image.cat`
+setenv MAG_BEST_FIELD `/bin/echo $MAG_BEST_FIELD | ${awk_bin} '{print $1-1}'`
+if ( ${MAG_BEST_FIELD} < 0 ) then
+	/bin/echo "wcs_fit : MAG_BEST not set in ${TMP_DIR}/${inpfile:r:t}_image.cat"
+	exit 6
+endif
+setenv MAG_BEST_FIELD `/bin/echo $MAG_BEST_FIELD | ${awk_bin} '{print $1+1}'`
+@ MAG_SORT_FIELD = $MAG_BEST_FIELD - 1
+
+# Reformatting to wcs.cat just to extract x,y,mag
+setenv X_IMAGE_FIELD `${awk_bin} '($3=="X_IMAGE") {print $2}' ${TMP_DIR}/${inpfile:r:t}_image.cat`
+if ( "$X_IMAGE_FIELD" == "" ) then
+	/bin/echo "wcs_fit : X_IMAGE not set in ${TMP_DIR}/${inpfile:r:t}_image.cat"
+	exit 7
+endif
+setenv Y_IMAGE_FIELD `${awk_bin} '($3=="Y_IMAGE") {print $2}' ${TMP_DIR}/${inpfile:r:t}_image.cat`
+if ( "${Y_IMAGE_FIELD}" == "" ) then
+	/bin/echo "wcs_fit : Y_IMAGE not set in ${TMP_DIR}/${inpfile:r:t}_image.cat"
+	exit 8
+endif
+setenv FWHM_IMAGE `${awk_bin} '($3=="FWHM_IMAGE") {print $2}' ${TMP_DIR}/${inpfile:r:t}_image.cat`
+if ( "$FWHM_IMAGE" == "" ) then
+	/bin/echo "wcs_fit : FWHM_IMAGE not set in ${TMP_DIR}/${inpfile:r:t}_image.cat"
+	exit 9
+endif
+setenv SEx_FLAG `${awk_bin} '($3=="FLAGS") {print $2}' ${TMP_DIR}/${inpfile:r:t}_image.cat`
+if ( "$SEx_FLAG" == "" ) then
+    /bin/echo "wcs_fit : FLAGS not set in ${TMP_DIR}/${inpfile:r:t}_image.cat"
+    exit 13
+endif
+
+/bin/echo "wcs_fit : Used content of ${TMP_DIR}/${inpfile:r:t}_image.cat written by SEx:"
+/bin/echo "wcs_fit : X_IMAGE_FIELD : $X_IMAGE_FIELD"
+/bin/echo "wcs_fit : Y_IMAGE_FIELD : $Y_IMAGE_FIELD"
+/bin/echo "wcs_fit : MAG_BEST_FIELD: $MAG_BEST_FIELD"
+/bin/echo "wcs_fit : FWHM_IMAGE: $FWHM_IMAGE"
+
+# Change FITS keywords from LT standards to those used by wcstools
+# We also need the value of PIXSCALE in order to test the SEx catalogue contents are sane
+# If not set yet, PIXSCALE is set now
+set PIXSCALE = `${MYBIN}gethead -u $inpfile PIXSCALE `
+if ( "$PIXSCALE" == "___" ) then
+	set PIXSCALE = `${MYBIN}gethead -u $inpfile CCDSCALE `
+	if ( "$PIXSCALE" == "___" ) then
+		/bin/echo "wcs_fit : Neither PIXSCALE nor CCDSCALE keywords defined. "
+		exit 10
+	endif
+	${MYBIN}sethead $inpfile PIXSCALE=${PIXSCALE} / '[arcsec/pixel] Scale of CCD pixel on sky'
+endif
+#
+# Check the seeing parameter in the header and use this to exclude non-stellar sources from the SExtractor output
+# The various seeing parameters in the FITS header are
+# 	L1_SEEING	The pipeline's measurement
+#	ESTSEE		The scheduler's best guess of what you should achieve in this exposure
+#	SCHEDSEE	The value used by the scheduler to choose this group. (Scaled to r-band zenith)
+#	PREDSEE		[Deprecated] Same as SCHEDSEE, before we introduced the zenith/wavelength scaling
+#
+set SEEING = `${MYBIN}gethead -u $inpfile ESTSEE `
+if ( "$SEEING" == "___" ) then
+  	set SEEING = `${MYBIN}gethead -u $inpfile L1_SEEING `
+  	if ( "$SEEING" == "___" ) then
+    		# Arbitrarily set 2 arcsec
+    		set SEEING = 2 
+  	else
+    		# Convert L1_SEEING (pixels) into arcsec
+    		set SEEING = `/bin/echo "3 k $SEEING $PIXSCALE * p" | /usr/bin/dc `
+  	endif
+endif  
+set SEEING_PIX = `/bin/echo "3 k $SEEING $PIXSCALE / p" | /usr/bin/dc`
+/bin/echo "wcs_fit : SEEING_PIX = $SEEING_PIX "
+#
+# Strip out just the $MAX_N_STARS best stars from *.dat
+# Then reformat the data  -> *.cat which will get used in the WCS
+#
+
+# Sort by magnitude to tmp1
+/bin/sort -n +$MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1
+# Keep only those with FWHM < twice the actual seeing, but always keep any sources < 3" whatever
+# These numbers need to be intergers for the following comparator, hence the "1 + 0 k 1 /" in the dc script
+# setenv is used instead of set because it allows us to use ENVIRON in the following awk
+setenv FWHM_IMAGE_LIMIT `/bin/echo "2.5 $SEEING_PIX * 1 + 0 k 1 / p" | /usr/bin/dc`
+set THREE_ARCSEC_PIX = `/bin/echo "0 k 3 $PIXSCALE / 1 + p" | /usr/bin/dc`
+if ( $FWHM_IMAGE_LIMIT < $THREE_ARCSEC_PIX ) setenv FWHM_IMAGE_LIMIT $THREE_ARCSEC_PIX
+/bin/echo "wcs_fit : FWHM_IMAGE_LIMIT = $FWHM_IMAGE_LIMIT"
+${awk_bin} '( ( $ENVIRON["SEx_FLAG"] == 0 )  && ( ! /^#/ ) && ( $ENVIRON["FWHM_IMAGE"] > 1 ) && ( $ENVIRON["FWHM_IMAGE"] < ENVIRON["FWHM_IMAGE_LIMIT"] ) )' ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2
+${awk_bin} '( $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3
+
+# Keep only $MAX_N_STARS best
+head -$MAX_N_STARS ${TMP_DIR}/tmp3 > ${TMP_DIR}/tmp4
+# Reformat the file to what is required by imwcs
+${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4 > ${TMP_DIR}/${inpfile:r:t}_wcs.cat
+/bin/rm ${TMP_DIR}/tmp1 ${TMP_DIR}/tmp2 ${TMP_DIR}/tmp3 ${TMP_DIR}/tmp4
+
+set N_STARS_TAKEN = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'` 
+/bin/echo "wcs_fit : N_STARS_TAKEN = $N_STARS_TAKEN"
+
+#
+# Read the rotator centre from the header. 
+# If the keywords are missing, we can guess at the chip centre.
+# Convert the APERTURE offset to pixels and apply it to POINT CENT. This will no longer
+# be required once a proper POINT CENT FITS header is created.
+#
+set POINT_CENTX = `${MYBIN}gethead -u $inpfile ROTCENTX`
+if ( "$POINT_CENTX" == "___" ) @ POINT_CENTX = `${MYBIN}gethead $inpfile NAXIS1` / 2
+set APERTUREX_PIX = `/bin/echo "0 k $APERTUREX $PIXSCALE / p" | /usr/bin/dc`
+@ POINT_CENTX -= $APERTUREX_PIX
+
+set POINT_CENTY = `${MYBIN}gethead -u $inpfile ROTCENTY`
+if ( "$POINT_CENTY" == "___" ) @ POINT_CENTY = `${MYBIN}gethead $inpfile NAXIS2`  / 2
+set APERTUREY_PIX = `echo "0 k $APERTUREY $PIXSCALE / p" | dc`
+@ POINT_CENTY -= $APERTUREY_PIX
+
+###Below: Pointing catalog compilation (only if not already there)
+###       Need to retrieve the USNOB file      Author: CRG
+##
+set RA = `${MYBIN}gethead $inpfile RA`
+set DE = `${MYBIN}gethead $inpfile DEC`
+set INPUT_RA = 0`/bin/echo $RA | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 240 / r 4 / + r 15 * + p"}' | /usr/bin/dc `
+set tmp_var = `/bin/echo $DE | /bin/sed 's/[+-]//' | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 3600 / r 60 / + r + p"}' | /usr/bin/dc `
+# Trap the case of -ve dec (including -0)
+if ( `/bin/echo $DE | /bin/grep -c -` ) then
+    set tmp_var2 = `/bin/echo $tmp_var | ${awk_bin} '{print "3 k ",$1," _1 * p"}' | /usr/bin/dc `
+    set INPUT_DEC = `/bin/echo $tmp_var2 | /bin/sed 's/-/-0/' `
+else 
+    set INPUT_DEC = 0$tmp_var 
+endif
+set RASTR = `/bin/echo $RA|/bin/sed 's/[:=&]//g'`
+set DESTR = `/bin/echo $DE|/bin/sed 's/[:=&]//g'`
+
+#
+# CATALOGUE LOOP:
+# Any looping over catalogues should start here
+# But we are only using one at the moment
+#
+
+# This is the start of USNOB1, from disk
+
+# XXX Once you get the usnob file, check it is valid and retry if need be 
+if ( ! -s ${TMP_DIR}/${RASTR}${DESTR}.usnob ) then
+    	setenv SIZE_X `${MYBIN}gethead $inpfile NAXIS1`  # equivalent to CCDXIMSI
+    	setenv SIZE_Y `${MYBIN}gethead $inpfile NAXIS2`  # equivalent to CCDYIMSI
+    	setenv PIXSC  `${MYBIN}gethead $inpfile CCDSCALE`
+
+    	setenv TRUE_SIZE_X  10.0    # arcmin
+    	setenv TRUE_SIZE_Y  10.0    # arcmin
+
+   	/bin/echo "wcs_fit : Retrieving USNOB file according to the following:"
+    	/bin/echo "wcs_fit : Center RA: $RA (${INPUT_RA})"
+    	/bin/echo "wcs_fit : Center DEC: $DE (${INPUT_DEC})"
+    	/bin/echo "wcs_fit : X Size (minutes): $TRUE_SIZE_X"
+    	/bin/echo "wcs_fit : Y Size (minutes): $TRUE_SIZE_Y"
+
+	# First check if a local copy of USNOB is available.
+    	# If yes, access it, otherwise go through internet.
+    	# CRG, 01/2005
+    	setenv USNOB_STATUS 1
+	/bin/echo "wcs_fit : Get USNOB from local copy"
+	/bin/echo "wcs_fit : ${MYBIN}/get_local_usnob.csh $RA  $DE  $TRUE_SIZE_X  ${TMP_DIR}/${RASTR}${DESTR}.usnob"
+	${MYBIN}/get_local_usnob.csh $RA  $DE  $TRUE_SIZE_X  ${TMP_DIR}/${RASTR}${DESTR}.usnob
+        setenv USNOB_STATUS $status
+	if ( ${USNOB_STATUS} != 0 ) then
+	    /bin/echo "wcs_fit : Retrieving USNOB1 failed : ${USNOB_STATUS}."
+	    exit 14
+	endif
+	setenv USNOB_GOOD_LINES `${awk_bin} '! /^#/' ${TMP_DIR}/${RASTR}${DESTR}.usnob| /usr/bin/wc -l| ${awk_bin} '{print $1}'`
+	if ( ! ${USNOB_GOOD_LINES} ) then
+	    /bin/echo "wcs_fit : Retrieving USNOB1 failed : No good lines : ${USNOB_GOOD_LINES}."
+	    exit 15
+	endif
+else
+    /bin/echo "wcs_fit : USNO File ${TMP_DIR}/${RASTR}${DESTR}.usnob already available."
+    touch ${TMP_DIR}/${RASTR}${DESTR}.usnob
+endif
+#
+# Create the starb version of the usnob file. The starb is what actually gets read by imwcs
+#
+if  ( ! -s ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb ) then
+    /bin/echo "wcs_fit : ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/${RASTR}${DESTR}.usnob >! ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb"
+    ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/${RASTR}${DESTR}.usnob >! ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb
+else
+    /bin/echo "wcs_fit : USNO.starb file ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb already available."
+    /bin/touch ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb
+endif
+####### Start Cropping #######
+if ( ! -s ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ) then
+    /bin/echo "wcs_fit : No cropped catalogue: start cropping USNOB file..."
+    setenv CROP_SIZE_X  6.0    # arcmin
+    setenv CROP_SIZE_Y  6.0    # arcmin
+
+    ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null
+    setenv STATUS $status
+    if ( ${STATUS} ) then
+	/bin/echo "wcs_fit : Cropping USNOB catalogue failed: use the entire catalogue."
+	/bin/cp -f ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob
+    else
+	/bin/echo "wcs_fit : USNOB catalogue cropped to ${CROP_SIZE_X} : ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob."
+    endif
+else
+    /bin/echo "wcs_fit : Cropped USNOB catalogue ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob already available."
+    /bin/touch ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob
+endif
+#
+# Create the cropped starb version of the usnob file.
+#
+if  ( ! -s ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb ) then
+    /bin/echo "wcs_fit : ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob >! ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb"
+    ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob >! ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb
+else
+    /bin/echo "wcs_fit : Cropped USNO.starb file ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb already available."
+    /bin/touch ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb
+endif
+
+####### End Cropping #######
+#
+# If  crop_*.starb file doesn't exist, that's the end of the imwcs. We'll just need to do nominal
+#
+if ( ! -s ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb ) then
+    /bin/echo "wcs_fit : Unable to find a valid USNOB cropped starb file (${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb). USNOB fit will not be possible."
+    exit 16
+endif
+
+set STARBFILE = ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb
+
+set N_STARS_CAT = `${awk_bin} '/^[0-9]/' $STARBFILE | /usr/bin/wc -l | ${awk_bin} '{print $1}'`
+
+/bin/echo "wcs_fit : Input RA               : $RA (${INPUT_RA})"
+/bin/echo "wcs_fit : Input DEC              : $DE (${INPUT_DEC})"
+/bin/echo "wcs_fit : Extracted sources        N_STARS      : $N_STARS"
+/bin/echo "wcs_fit : Used for Astrometric fit N_STARS_TAKEN: $N_STARS_TAKEN"
+/bin/echo "wcs_fit : Catalogue sources number N_STARS_CAT  : $N_STARS_CAT"
+
+if ($N_STARS_CAT < $MIN_N_STARS ) then
+    echo "wcs_fit : There are fewer than $MIN_N_STARS in catalogue. We cannot cross correlate against this."
+    exit 17
+endif
+# 
+# Extract first guess at field rotation from FITS header
+#
+set ROTSKYPA = `${MYBIN}gethead $inpfile ROTSKYPA`
+/bin/echo "wcs_fit : ROTSKYPA: $ROTSKYPA"
+# ROTSKYPA only gets used again to write into the the final output file as WROTSKY
+# Throughout the main body of the script, we only need CROTA and INPUT_ROT for the actual fitting
+# Change sign to ROTSKYPA: CROTA is measured in the opposite sense to ROTSKYPA 
+set CROTA = `/bin/echo "$ROTSKYPA" | ${awk_bin} '{print -$1}'`
+set INPUT_ROT = $CROTA
+# Before calling imwcs, write a first guess nominal WCS into teh FITS header based on the TCS parameters.
+# imwcs works a lot better if it has a first guess to start from
+#
+# There is a nasty fudge here. Ugly and not reliable. It could easily break at any time due to small changes in the
+# arrangement of FITS keyword headers. imwcs and sethead can get in a mess with long comments and end
+# up corrupting the keyword. In order to prevent this, I manually truncate the comments on those keywords
+# which routinely cause troubles. Others may do on some occaisions and I have not noticed. The real 
+# solution is to fix sethead, but Mink's code is fairly inpenetable.
+#${MYBIN}fits_modify_comment_static ${inpfile} RADECSYS '[FK4, FK5] Fundamental coordinate system'
+#${MYBIN}fits_modify_comment_static ${inpfile} EQUINOX 'Date of the coordinate system'
+${MYBIN}sethead $inpfile   CTYPE1="RA---TAN"		/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CTYPE2="DEC--TAN"		/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CRPIX1=${POINT_CENTX}	/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CRPIX2=${POINT_CENTY}	/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CRVAL1=${INPUT_RA}		/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CRVAL2=${INPUT_DEC}		/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CDELT2=$PIXSCALE_DEGREES	/ 'First guess nominal WCS'
+set PIXSCALE_DEGREES = `echo "10 k $PIXSCALE _1 * p" | dc`
+${MYBIN}sethead $inpfile   CDELT1=$PIXSCALE_DEGREES	/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CROTA1=$INPUT_ROT		/ 'First guess nominal WCS'
+${MYBIN}sethead $inpfile   CROTA2=$INPUT_ROT		/ 'First guess nominal WCS'
+
+########### ASTROMETRIC FIT: begin ###########
+# 
+# Decide how many parameters to fit. If we only have three stars, there is not much point pushing it
+#
+if ( $N_STARS_TAKEN <= 5 ) then
+  # RA, DEC and rotation
+  set N_FIT_PARAMS = -125
+else
+  # RA, DEC, pixscale and rotation
+  set N_FIT_PARAMS = -1235
+endif
+
+set WCS_WAS_RUN = 1
+/bin/echo "wcs_fit : Performing Astrometric Fit..."
+
+#   Keep stdout and stderr of imwcs separate: (mod. CRG, 11/11/04)
+/bin/echo "wcs_fit : (${MYBIN}imwcs -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s 2 -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 -q i  -x $POINT_CENTX $POINT_CENTY -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
+(${MYBIN}imwcs -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s 2 -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 -q i  -x $POINT_CENTX $POINT_CENTY -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+
+########### ASTROMETRIC FIT: end   ###########
+
+# Define output files name
+set fittedfile = ${inpfile}.wcs
+########### Sanity checks on the results of the Astrometric Fit ###########
+
+
+# Check the existence of the output file ${TMP_DIR}/${inpfile:r:t}_temp.fits
+if ( ! -s ${TMP_DIR}/${inpfile:r:t}_temp.fits ) then
+    /bin/echo "wcs_fit : Astrometric Fit failed : Output file ${TMP_DIR}/${inpfile:r:t}_temp.fits does not exist."
+    exit 18
+endif
+
+# Below: Check full compliance with WCS and write other WCS keywords
+setenv CTYPE1 `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CTYPE1`
+if($CTYPE1 != 'RA---TAN') then
+    /bin/echo "wcs_fit : Fitted Image: non-gnomonic Projection: CTYPE1= $CTYPE1"
+    exit 19
+endif
+
+setenv CRVAL2 `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CRVAL2`
+setenv I_CRVAL2 `/bin/echo "$CRVAL2 / 1"|/usr/bin/bc`    # INTEGER PART ONLY (otherwise, use 'bc -l')
+if( $I_CRVAL2 < 90) then
+    setenv LONPOLE '180.0'
+else if($I_CRVAL2 == 90) then
+    setenv LONPOLE '0.0'
+else
+    /bin/echo "wcs_fit : Fitted Image: unacceptable value for CRVAL2: $CRVAL2"
+    exit 20
+endif
+# Add some WCS keywords
+/usr/bin/test -f ${TMP_DIR}/listkeys.tmp && /bin/rm -f ${TMP_DIR}/listkeys.tmp
+/bin/echo "CUNIT1='deg'" > ${TMP_DIR}/listkeys.tmp
+/bin/echo "CUNIT2='deg'" >> ${TMP_DIR}/listkeys.tmp
+/bin/echo "LONPOLE=$LONPOLE / Native longitude of celestial pole" >> ${TMP_DIR}/listkeys.tmp
+setenv MJDOBS `${MYBIN}gethead -u ${TMP_DIR}/${inpfile:r:t}_temp.fits MJD`
+if ( "$MJDOBS" != "___" ) then
+    /bin/echo "MJD-OBS=$MJDOBS / Start time in Modified Julian Days" >> ${TMP_DIR}/listkeys.tmp
+else
+    /bin/echo "MJD undefined"
+endif
+${MYBIN}sethead ${TMP_DIR}/${inpfile:r:t}_temp.fits @${TMP_DIR}/listkeys.tmp
+/bin/cat ${TMP_DIR}/listkeys.tmp
+/bin/rm -f ${TMP_DIR}/listkeys.tmp
+#Below:  Further Sanity checks on the WCS
+set NMATCH = `${awk_bin} '/nmatch=/ {nmatch=$3}; END {print nmatch}' ${TMP_DIR}/${inpfile:r:t}.wcsfit`
+if ( "$NMATCH" == "" ) set NMATCH = 0
+set MATCHFRAC = `/bin/echo "$NMATCH * 100 / $N_STARS_TAKEN" | /usr/bin/bc`
+/bin/echo "wcs_fit : Fitted Image: Matched fraction = $MATCHFRAC ( $NMATCH of $N_STARS_TAKEN ) "
+#Conditions to be satisfied for rejecting the fit
+if(($MATCHFRAC < ${THR_FRACTION}) || ($NMATCH < $MIN_N_STARS)) then
+    /bin/echo "wcs_fit : Fitted Image: less than ${THR_FRACTION}% of reference stars matched or less than ${MIN_N_STARS}"
+    exit 21
+endif
+# Make sure PIXSCALE is defined in the fitted image
+# This has already been checked once before
+setenv PIXSCALE `${MYBIN}gethead -u PIXSCALE ${TMP_DIR}/${inpfile:r:t}_temp.fits`
+if ( "$PIXSCALE" == "___" ) then 
+    echo "wcs_fit : Fitted Image: pixscale not known."
+    exit 22
+endif
+# Make sure scale change is not greater than 1.0 %
+# Previous version was correct only for rotation angles= 0,90,180,270!
+# Now the check is robust!
+set CD1_1 = `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CD1_1`
+set CD1_1 = `/bin/echo "$CD1_1 * 3600" | /usr/bin/bc -l`
+set CD1_2 = `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CD1_2`
+set CD1_2 = `/bin/echo "$CD1_2 * 3600" | /usr/bin/bc -l`
+set CD2_1 = `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CD2_1`
+set CD2_1 = `/bin/echo "$CD2_1 * 3600" | /usr/bin/bc -l`
+set CD2_2 = `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CD2_2`
+set CD2_2 = `/bin/echo "$CD2_2 * 3600" | /usr/bin/bc -l`
+/bin/echo "wcs_fit : PIXSCALE:  $PIXSCALE"
+/bin/echo "wcs_fit : CD1_1   CD1_2:  $CD1_1  $CD1_2"
+/bin/echo "wcs_fit : CD2_1   CD2_2:  $CD2_1  $CD2_2"
+set SCALECHANGE_1 = `/bin/echo "(sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| /usr/bin/bc -l| /bin/sed 's/\..*//g'`
+set SCALECHANGE_2 = `/bin/echo "(sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| /usr/bin/bc -l| /bin/sed 's/\..*//g'`
+/bin/echo "wcs_fit : Fitted Image: Scalechange 1: $SCALECHANGE_1 (0.1%)  Scalechange 2: $SCALECHANGE_2 (0.1%)"
+if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
+    /bin/echo "wcs_fit : Fitted Image: CD matrix suggests plate scale changed by more than 1.0%. Bad."
+    exit 23
+endif
+# Rename ${TMP_DIR}/${inpfile:r:t}_temp.fits to fittedfile variable
+/bin/mv ${TMP_DIR}/${inpfile:r:t}_temp.fits ${fittedfile}
+/bin/grep "^ cra" ${TMP_DIR}/${inpfile:r:t}.errwcsfit | /usr/bin/tail -1
+# Read from the output files the residuals on the final fit
+set XYRESID = `/bin/grep "^# Mean  dx" ${TMP_DIR}/${inpfile:r:t}.wcsfit | /usr/bin/tail -1 | ${awk_bin} '{print $NF}'`
+set RDRESID = `/bin/grep "^# Mean dra" ${TMP_DIR}/${inpfile:r:t}.wcsfit | /usr/bin/tail -1 | ${awk_bin} '{print $NF}'`
+/bin/echo "XY residual = $XYRESID RA,dec residual = $RDRESID"
+${MYBIN}sethead ${fittedfile} WCSRDRES="$RDRESID" / '[arcsec] WCS fitting residuals, mean and sigma'
+set RESID_TEST = `/bin/echo $RDRESID | /usr/bin/cut -d"/" -f1 | /bin/sed 's/\..*//' `
+if ( $RESID_TEST >= $MAX_FIT_RESIDUAL ) then
+    /bin/echo "wcs_fit : Fitting residuals > $MAX_FIT_RESIDUAL arcsec. Fit suspect and will not be used."
+    exit 24
+endif
+
+/bin/echo "wcs_fit : Input RA,Dec, Rot = $INPUT_RA $INPUT_DEC $INPUT_ROT "
+set OUTPUT_RA  = `${MYBIN}gethead ${fittedfile} CRVAL1`
+set OUTPUT_DEC  = `${MYBIN}gethead ${fittedfile} CRVAL2`
+set OUTPUT_ROT  = `${MYBIN}gethead ${fittedfile} CROTA1`
+/bin/echo "wcs_fit : Output RA,Dec, Rot = $OUTPUT_RA $OUTPUT_DEC $OUTPUT_ROT "
+# Calculate cos(dec) which will be required later for working out RA separations
+set COSDEC = `/bin/echo $OUTPUT_DEC | ${awk_bin} '{printf("%15.13f\n",cos($1*3.1415927/180))}'`
+set COSDEC = `/bin/echo $COSDEC | /bin/sed 's/-/_/'`
+# Dispose of the +/- symbol for the benefit of dc
+set INPUT_DEC = `/bin/echo $INPUT_DEC | /bin/sed 's/-/_/'`
+set OUTPUT_DEC = `/bin/echo $OUTPUT_DEC | /bin/sed 's/-/_/'`
+set INPUT_ROT = `/bin/echo $INPUT_ROT | /bin/sed 's/-/_/'`
+set OUTPUT_ROT = `/bin/echo $OUTPUT_ROT | /bin/sed 's/-/_/'`
+# Calc how far the new WCS poiting is from the nominal telescope pointing
+set DEL_DEC = ` /bin/echo " 10 k $OUTPUT_DEC $INPUT_DEC - 3600 * 1 k 1 / p " | /usr/bin/dc `  
+set INPUT_DEC = `/bin/echo $INPUT_DEC | /bin/sed 's/_/-/'`
+set DEL_RA = `/bin/echo " 10 k $OUTPUT_RA $INPUT_RA - $COSDEC * 3600 * 1 k 1 / p " | /usr/bin/dc `
+set DEL_ROT = ` /bin/echo " $OUTPUT_ROT $INPUT_ROT - 360 % 3 k 1 / p " | /usr/bin/dc `  
+/bin/echo "wcs_fit : Change induced by WCS fitting:"
+/bin/echo "wcs_fit :   RA change:    $DEL_RA arcsec"
+/bin/echo "wcs_fit :   dec change:    $DEL_DEC arcsec"
+${MYBIN}sethead ${fittedfile} WCSDELRA=$DEL_RA / '[arcsec] Shift of fitted WCS w.r.t. nominal pointing'
+${MYBIN}sethead ${fittedfile} WCSDELDE=$DEL_DEC / '[arcsec] Shift of fitted WCS w.r.t. nominal pointing'
+${MYBIN}sethead ${fittedfile} WCSDELRO=$DEL_ROT / '[deg] Shift of fitted rotator WCS w.r.t. nominal'
+# Combine delRA and delDEC into a pointing error. (First convert the - to _ in the strings)
+set DEL_RA = `/bin/echo $DEL_RA | /bin/sed 's/-/_/'`
+set DEL_DEC = `/bin/echo $DEL_DEC | /bin/sed 's/-/_/'`
+set DEL_POINT = `/bin/echo " 10 k $DEL_DEC $DEL_DEC * $DEL_RA $DEL_RA * + v 0 k 1 / p" | /usr/bin/dc`
+${MYBIN}sethead ${fittedfile} WCSDELPO=$DEL_POINT / '[arcsec] Shift of fitted WCS w.r.t. nominal'
+/bin/echo "wcs_fit : Pointing change : $DEL_POINT arcsec"
+/bin/echo "wcs_fit : Rot change:    $DEL_ROT deg"
+if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
+    /bin/echo "wcs_fit : Pointing change too large ($DEL_POINT >= $MAX_POINT_CHANGE)."
+    exit 25
+endif
+# Convert DEL_ROT to an abs(integer)
+# This is convoluted! Strip the minus sign. Convert to integer. Convert to range -180 -> +180. Strip the minus sign. Test against limit
+# This is more succint, when you get time to change it set TEST_ROT = `echo $DEL_ROT | sed 's/-//' | sed 's/\..*//' `
+set TEST_ROT = `/bin/echo $DEL_ROT | /bin/sed 's/-//'`
+set TEST_ROT = `/bin/echo "0 k $TEST_ROT 1 / p " | /usr/bin/dc `  
+if ( $TEST_ROT > 180 ) @ TEST_ROT -= 360 
+set TEST_ROT = `/bin/echo $TEST_ROT | /bin/sed 's/-//'`
+if ( $TEST_ROT >= $MAX_ROT_CHANGE ) then
+    /bin/echo "wcs_fit : Rotator change too large ($TEST_ROT >= $MAX_ROT_CHANGE)."
+    exit 25
+endif
+
+#
+# CATALOGUE LOOP: END
+# End of catalogue loop!
+#
+/bin/echo "wcs_fit : Create new file with WCS."
+set final_file = ${output_fits_filename}
+/bin/mv ${inpfile}.bak $final_file
+# This is a nasty fudge. Ugly and not reliable. It could easily break at any time due to small changes in the
+# arrangement of FITS keyword headers. imwcs and sethead can get in a mess with long comments and end
+# up corrupting the keyword. In order to prevent this, I manually truncate the comments on those keywords
+# which routinely cause troubles. Others may do on some occaisions and I have not noticed. The real 
+# solution is to fix sethead, but Mink's code is fairly inpenetable.
+${MYBIN}fits_modify_comment_static ${final_file} RADECSYS '[FK4, FK5] Fundamental coordinate system'
+${MYBIN}fits_modify_comment_static ${final_file} EQUINOX 'Date of the coordinate system'
+${MYBIN}sethead $final_file PIXSCALE=`${MYBIN}gethead $fittedfile PIXSCALE` / '[arcsec/pixel] Nominal pixel scale on sky'
+${MYBIN}sethead $final_file   CTYPE1=`${MYBIN}gethead $fittedfile CTYPE1` / ''
+${MYBIN}sethead $final_file   CTYPE2=`${MYBIN}gethead $fittedfile CTYPE2` / ''
+${MYBIN}sethead $final_file   CRPIX1=`${MYBIN}gethead $fittedfile CRPIX1` / ''
+${MYBIN}sethead $final_file   CRPIX2=`${MYBIN}gethead $fittedfile CRPIX2` / ''
+${MYBIN}sethead $final_file   CRVAL1=`${MYBIN}gethead $fittedfile CRVAL1` / '[degrees] World coordinate at the ref pix'
+${MYBIN}sethead $final_file   CRVAL2=`${MYBIN}gethead $fittedfile CRVAL2` / '[degrees] World coordinate at the ref pix'
+${MYBIN}sethead $final_file       RA=`${MYBIN}gethead $fittedfile RA` / 'World coordinate at the reference pixel'
+${MYBIN}sethead $final_file      DEC=`${MYBIN}gethead $fittedfile DEC`	/ 'World coordinate at the reference pixel'
+${MYBIN}sethead $final_file      WRA=`${MYBIN}gethead $fittedfile WRA`	/ 'Original RA value from TCS before WCS fit'
+${MYBIN}sethead $final_file     WDEC=`${MYBIN}gethead $fittedfile WDEC`	/ 'Original DEC value from TCS before WCS fit'
+${MYBIN}sethead $final_file  WROTSKY=`${MYBIN}gethead $fittedfile ROTSKYPA`	/ 'Original sky PA value from TCS before WCS fit'
+set ROTSKYPA = `${MYBIN}gethead $fittedfile CROTA1 | ${awk_bin} '{print -$1}'`
+${MYBIN}sethead $final_file ROTSKYPA=${ROTSKYPA}				/ '[degrees] sky position angle'
+${MYBIN}sethead $final_file  EQUINOX=`${MYBIN}gethead $fittedfile EQUINOX`	/ 'Date of the coordinate system'
+${MYBIN}sethead $final_file    EPOCH=`${MYBIN}gethead $fittedfile EPOCH`	/ ''
+${MYBIN}sethead $final_file   CDELT1=`${MYBIN}gethead $fittedfile CDELT1`	/ '[degrees/pixel]'
+${MYBIN}sethead $final_file   CDELT2=`${MYBIN}gethead $fittedfile CDELT2`	/ '[degrees/pixel]'
+${MYBIN}sethead $final_file   CROTA1=`${MYBIN}gethead $fittedfile CROTA1` / '[degrees]'
+${MYBIN}sethead $final_file   CROTA2=`${MYBIN}gethead $fittedfile CROTA2` / '[degrees]'
+${MYBIN}sethead $final_file   CUNIT1=`${MYBIN}gethead $fittedfile CUNIT1` / ''
+${MYBIN}sethead $final_file   CUNIT2=`${MYBIN}gethead $fittedfile CUNIT2` / ''
+${MYBIN}sethead $final_file    CD1_1=`${MYBIN}gethead $fittedfile CD1_1` / 'WCS CD matrix'
+${MYBIN}sethead $final_file    CD1_2=`${MYBIN}gethead $fittedfile CD1_2` / 'WCS CD matrix'
+${MYBIN}sethead $final_file    CD2_1=`${MYBIN}gethead $fittedfile CD2_1` / 'WCS CD matrix'
+${MYBIN}sethead $final_file    CD2_2=`${MYBIN}gethead $fittedfile CD2_2` / 'WCS CD matrix'
+${MYBIN}sethead $final_file   SECPIX=`${MYBIN}gethead $fittedfile SECPIX` / '[arcsec/pixel] Fitted pixel scale on sky'
+${MYBIN}sethead $final_file    IMWCS=`${MYBIN}gethead $fittedfile IMWCS` / ''
+${MYBIN}sethead $final_file WCSRFCAT=`${MYBIN}gethead $fittedfile WCSRFCAT` / ''
+${MYBIN}sethead $final_file WCSIMCAT=`${MYBIN}gethead $fittedfile WCSIMCAT` / ''
+${MYBIN}sethead $final_file  WCSNREF=`${MYBIN}gethead $fittedfile WCSNREF` / 'Stars in image available to define WCS'
+${MYBIN}sethead $final_file WCSMATCH=`${MYBIN}gethead $fittedfile WCSMATCH` / 'Stars in image matched against ref catalogue'
+${MYBIN}sethead $final_file WCREFCAT=$REFCAT / '0 for failed, 1 for USNO-B, 2 for 2MASS PSC'
+${MYBIN}sethead $final_file  LONPOLE=`${MYBIN}gethead $fittedfile LONPOLE` / 'Native longitude of celestial pole'
+${MYBIN}sethead $final_file WCSRDRES=`${MYBIN}gethead $fittedfile WCSRDRES` / '[arcsec] WCS fitting residuals, mean and sigma '
+${MYBIN}sethead $final_file WCSDELRA=`${MYBIN}gethead $fittedfile WCSDELRA` / '[arcsec] Shift of fitted WCS w.r.t. nominal '
+${MYBIN}sethead $final_file WCSDELDE=`${MYBIN}gethead $fittedfile WCSDELDE` / '[arcsec] Shift of fitted WCS w.r.t. nominal '
+${MYBIN}sethead $final_file WCSDELRO=`${MYBIN}gethead $fittedfile WCSDELRO` / '[deg] Rotator shift w.r.t. nominal WCS '
+${MYBIN}sethead $final_file WCSDELPO=`${MYBIN}gethead $fittedfile WCSDELPO` / '[arcsec] Shift of fitted WCS w.r.t. nominal '
+${MYBIN}sethead $final_file   WCSSEP=`${MYBIN}gethead $fittedfile WCSSEP` / '[arcsec] Shift of fitted WCS w.r.t. nominal '
+if ( -e $fittedfile ) then
+    /bin/rm -f ${fittedfile}
+endif
+# We havn't set  WCS_ERR here - it can only be 0 at this stage!
+#
+# Delete all the temp files
+#
+/bin/rm -f ${TMP_DIR}/${inpfile:r:t}_wcs.cat
+/bin/rm -f ${TMP_DIR}/${inpfile:r:t}_image.cat
+/bin/rm -f ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+/bin/rm -f ${TMP_DIR}/${inpfile:r:t}.wcsfit
+/bin/echo "wcs_fit : Astrometric Fit script finished."
+exit 0
+#
+# $Log: not supported by cvs2svn $
+#
