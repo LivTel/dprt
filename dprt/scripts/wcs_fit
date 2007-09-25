@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.1 2007-09-24 09:56:34 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.2 2007-09-25 10:56:59 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -46,11 +46,11 @@ else
 	/bin/echo "wcs_fit : Failed to find a base tmp dir."
 	exit 27
 endif
-set TMP_DIR 		= ${base_tmp_dir}/wcs
+set TMP_DIR = ${base_tmp_dir}/wcs
 if ( -d /icc/wcs_fit/bin/ ) then
-    set MYBIN 		= /icc/wcs_fit/bin/
+    setenv MYBIN /icc/wcs_fit/bin/
 else if ( -d /usr/local/bin/wcs/ ) then
-    set MYBIN 		= /usr/local/bin/wcs/
+    setenv MYBIN /usr/local/bin/wcs/
 else
 	/bin/echo "wcs_fit : Failed to find a binary dir."
 	exit 26
@@ -83,7 +83,10 @@ else
 	/bin/echo "wcs_fit : Unknown OS name : ${os_name}."
 	exit 28
 endif
-
+# From pipe_astrometric.csh
+set USE_USNOB = 3
+# We only use disk based USNOB at the moment, so REFCAT is hardcoded, and used only in the output FITS HEADERS
+set REFCAT = $USE_USNOB
 # Initialising variable
 set N_STARS		= 0
 set N_STARS_TAKEN	= 0
@@ -288,6 +291,7 @@ if ( "$PIXSCALE" == "___" ) then
 	endif
 	${MYBIN}sethead $inpfile PIXSCALE=${PIXSCALE} / '[arcsec/pixel] Scale of CCD pixel on sky'
 endif
+set PIXSCALE_DEGREES = `/bin/echo "10 k $PIXSCALE 3600 / p" | /usr/bin/dc`
 #
 # Check the seeing parameter in the header and use this to exclude non-stellar sources from the SExtractor output
 # The various seeing parameters in the FITS header are
@@ -323,15 +327,26 @@ setenv FWHM_IMAGE_LIMIT `/bin/echo "2.5 $SEEING_PIX * 1 + 0 k 1 / p" | /usr/bin/
 set THREE_ARCSEC_PIX = `/bin/echo "0 k 3 $PIXSCALE / 1 + p" | /usr/bin/dc`
 if ( $FWHM_IMAGE_LIMIT < $THREE_ARCSEC_PIX ) setenv FWHM_IMAGE_LIMIT $THREE_ARCSEC_PIX
 /bin/echo "wcs_fit : FWHM_IMAGE_LIMIT = $FWHM_IMAGE_LIMIT"
-${awk_bin} '( ( $ENVIRON["SEx_FLAG"] == 0 )  && ( ! /^#/ ) && ( $ENVIRON["FWHM_IMAGE"] > 1 ) && ( $ENVIRON["FWHM_IMAGE"] < ENVIRON["FWHM_IMAGE_LIMIT"] ) )' ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2
+# Can't get this next line to work under Solaris
+#${awk_bin} '( ( $ENVIRON["SEx_FLAG"] == 0 )  && ( ! /^#/ ) && ( $ENVIRON["FWHM_IMAGE"] > 1 ) && ( $ENVIRON["FWHM_IMAGE"] < ENVIRON["FWHM_IMAGE_LIMIT"] ) )' ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2
+# Instead, write a temporary awk file to run
+/bin/touch ${TMP_DIR}/fwhm_limit.awk
+/bin/chmod +x ${TMP_DIR}/fwhm_limit.awk
+/bin/echo '#!'"${awk_bin} -f" >> ${TMP_DIR}/fwhm_limit.awk
+/bin/echo '( ( $'"${SEx_FLAG}"' == 0 )  && ( ! /^#/ ) && ( $'"${FWHM_IMAGE}"' > 1 ) && ( $'"${FWHM_IMAGE}"' < '"${FWHM_IMAGE_LIMIT}"' ) )' >> ${TMP_DIR}/fwhm_limit.awk
+/bin/echo "wcs_fit : ${TMP_DIR}/fwhm_limit.awk contents:"
+/bin/cat ${TMP_DIR}/fwhm_limit.awk
+/bin/echo "wcs_fit : ${TMP_DIR}/fwhm_limit.awk ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2"
+${TMP_DIR}/fwhm_limit.awk ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2
+# Ensure the contents of MAG_BEST_FIELD field are < 99 (${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3)
 ${awk_bin} '( $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3
 
 # Keep only $MAX_N_STARS best
-head -$MAX_N_STARS ${TMP_DIR}/tmp3 > ${TMP_DIR}/tmp4
+/usr/bin/head -$MAX_N_STARS ${TMP_DIR}/tmp3 > ${TMP_DIR}/tmp4
 # Reformat the file to what is required by imwcs
 ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4 > ${TMP_DIR}/${inpfile:r:t}_wcs.cat
 /bin/rm ${TMP_DIR}/tmp1 ${TMP_DIR}/tmp2 ${TMP_DIR}/tmp3 ${TMP_DIR}/tmp4
-
+/bin/rm ${TMP_DIR}/fwhm_limit.awk
 set N_STARS_TAKEN = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'` 
 /bin/echo "wcs_fit : N_STARS_TAKEN = $N_STARS_TAKEN"
 
@@ -348,7 +363,7 @@ set APERTUREX_PIX = `/bin/echo "0 k $APERTUREX $PIXSCALE / p" | /usr/bin/dc`
 
 set POINT_CENTY = `${MYBIN}gethead -u $inpfile ROTCENTY`
 if ( "$POINT_CENTY" == "___" ) @ POINT_CENTY = `${MYBIN}gethead $inpfile NAXIS2`  / 2
-set APERTUREY_PIX = `echo "0 k $APERTUREY $PIXSCALE / p" | dc`
+set APERTUREY_PIX = `echo "0 k $APERTUREY $PIXSCALE / p" | /usr/bin/dc`
 @ POINT_CENTY -= $APERTUREY_PIX
 
 ###Below: Pointing catalog compilation (only if not already there)
@@ -356,8 +371,20 @@ set APERTUREY_PIX = `echo "0 k $APERTUREY $PIXSCALE / p" | dc`
 ##
 set RA = `${MYBIN}gethead $inpfile RA`
 set DE = `${MYBIN}gethead $inpfile DEC`
-set INPUT_RA = 0`/bin/echo $RA | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 240 / r 4 / + r 15 * + p"}' | /usr/bin/dc `
-set tmp_var = `/bin/echo $DE | /bin/sed 's/[+-]//' | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 3600 / r 60 / + r + p"}' | /usr/bin/dc `
+# $RA (HH:MM:SS) -> $INPUT_RA (in degrees)
+# This next line doesn't work, Solaris dc does not support the 'r' operator (inverts top 2 elements on stack)
+#set INPUT_RA = 0`/bin/echo $RA | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 240 / r 4 / + r 15 * + p"}' | /usr/bin/dc `
+set INPUT_RA_H = `/bin/echo $RA | ${awk_bin} -F : '{print $1}'`
+set INPUT_RA_M = `/bin/echo $RA | ${awk_bin} -F : '{print $2}'`
+set INPUT_RA_S = `/bin/echo $RA | ${awk_bin} -F : '{print $3}'`
+set INPUT_RA = 0`/bin/echo "scale=3; ((${INPUT_RA_H} * 15) + (${INPUT_RA_M} / 4) + (${INPUT_RA_S} / 240) )" | /usr/bin/bc`
+# $DE -> $INPUT_DEC (in degrees)
+# This next line doesn't work, Solaris dc does not support the 'r' operator (inverts top 2 elements on stack)
+# set tmp_var = `/bin/echo $DE | /bin/sed 's/[+-]//' | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 3600 / r 60 / + r + p"}' | /usr/bin/dc `
+set INPUT_DEC_D = `/bin/echo $DE | ${awk_bin} -F : '{print $1}' | /bin/sed 's/[+-]//'`
+set INPUT_DEC_M = `/bin/echo $DE | ${awk_bin} -F : '{print $2}'`
+set INPUT_DEC_S = `/bin/echo $DE | ${awk_bin} -F : '{print $3}'`
+set tmp_var = `/bin/echo "scale=3; ((${INPUT_DEC_D}) + (${INPUT_DEC_M} / 60) + (${INPUT_DEC_S} / 3600))" | /usr/bin/bc`
 # Trap the case of -ve dec (including -0)
 if ( `/bin/echo $DE | /bin/grep -c -` ) then
     set tmp_var2 = `/bin/echo $tmp_var | ${awk_bin} '{print "3 k ",$1," _1 * p"}' | /usr/bin/dc `
@@ -428,6 +455,7 @@ if ( ! -s ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ) then
     setenv CROP_SIZE_X  6.0    # arcmin
     setenv CROP_SIZE_Y  6.0    # arcmin
 
+    /bin/echo "wcs_fit : ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null"
     ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null
     setenv STATUS $status
     if ( ${STATUS} ) then
@@ -501,7 +529,7 @@ ${MYBIN}sethead $inpfile   CRPIX2=${POINT_CENTY}	/ 'First guess nominal WCS'
 ${MYBIN}sethead $inpfile   CRVAL1=${INPUT_RA}		/ 'First guess nominal WCS'
 ${MYBIN}sethead $inpfile   CRVAL2=${INPUT_DEC}		/ 'First guess nominal WCS'
 ${MYBIN}sethead $inpfile   CDELT2=$PIXSCALE_DEGREES	/ 'First guess nominal WCS'
-set PIXSCALE_DEGREES = `echo "10 k $PIXSCALE _1 * p" | dc`
+set PIXSCALE_DEGREES = `echo "10 k $PIXSCALE _1 * p" | /usr/bin/dc`
 ${MYBIN}sethead $inpfile   CDELT1=$PIXSCALE_DEGREES	/ 'First guess nominal WCS'
 ${MYBIN}sethead $inpfile   CROTA1=$INPUT_ROT		/ 'First guess nominal WCS'
 ${MYBIN}sethead $inpfile   CROTA2=$INPUT_ROT		/ 'First guess nominal WCS'
@@ -737,4 +765,7 @@ endif
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2007/09/24 09:56:34  cjm
+# Initial revision
+#
 #
