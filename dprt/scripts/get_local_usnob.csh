@@ -65,6 +65,9 @@ if ( ! -d ${RUT} ) then
     exit 5
 endif
 
+# Fix DEC so it has a '+'
+# usnob1 translates Decs like 5:34:46 as 0! +5:34:46 is OK
+setenv DEC `echo ${DEC}|awk '(substr($1,1,1)!="\-")&&(substr($1,1,1)!="\+") {printf "\+%s\n",$1} !((substr($1,1,1)!="\-")&&(substr($1,1,1)!="\+")) {print $1}'`
 
 /bin/echo "get_local_usnob.csh : ${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:r:t}.ori"
 ${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:r:t}.ori
@@ -111,6 +114,9 @@ ${awk_bin} -f ${MYBIN}rd.awk  ${TMP_DIR}/${FIL:r:t}.ori >> ${FIL}
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2007/09/24 15:41:20  cjm
+# Rewritten using TMP_DIR, correct awk version for rd.awk.
+#
 # Revision 1.1  2007/09/24 13:31:23  cjm
 # Initial revision
 #
