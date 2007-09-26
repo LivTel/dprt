@@ -9,10 +9,10 @@ if( ${#argv} != 4 ) then
     exit 1
 endif
 
-setenv RA   "$1"
-setenv DEC  "$2"
-setenv SID  "$3"
-setenv FIL  "$4"
+set RA  = "$1"
+set DEC = "$2"
+set SID = "$3"
+set FIL = "$4"
 set i=1
 
 if ( ! ${?MYBIN} ) then
@@ -27,15 +27,17 @@ if ( ! ${?MYBIN} ) then
 endif
 
 #
-# Which awk shall we use?
+# Which awk/grep shall we use?
 # Linux : /bin/awk is good
 # Solaris (7/8) : /bin/awk does not have advanced printf functionality (used by rd.awk), /usr/xpg4/bin/awk does
 #
 set os_name = `/bin/uname`
 if ( "${os_name}" == "SunOS" ) then
     set awk_bin = "/usr/xpg4/bin/awk"
+    set grep_bin = "/usr/xpg4/bin/grep"
 else if ( "${os_name}" == "Linux" ) then
     set awk_bin = "/bin/awk"
+    set grep_bin = "/bin/grep"
 else
 	/bin/echo "get_local_usnob.csh : Unknown OS name : ${os_name}."
 	exit 6
@@ -67,7 +69,11 @@ endif
 
 # Fix DEC so it has a '+'
 # usnob1 translates Decs like 5:34:46 as 0! +5:34:46 is OK
-setenv DEC `echo ${DEC}|awk '(substr($1,1,1)!="\-")&&(substr($1,1,1)!="\+") {printf "\+%s\n",$1} !((substr($1,1,1)!="\-")&&(substr($1,1,1)!="\+")) {print $1}'`
+/bin/echo ${DEC} | ${grep_bin} -q '[+-]' 
+set grep_status = $status
+if ( ${grep_status} != 0 ) then
+    set DEC = '+'"${DEC}"
+endif
 
 /bin/echo "get_local_usnob.csh : ${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:r:t}.ori"
 ${MYBIN}usnob1 -m 8000 -v -R ${RUT} -s a -b ${SID} -c ${RA} ${DEC} >! ${TMP_DIR}/${FIL:r:t}.ori
@@ -114,6 +120,10 @@ ${awk_bin} -f ${MYBIN}rd.awk  ${TMP_DIR}/${FIL:r:t}.ori >> ${FIL}
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2007/09/26 12:26:31  cjm
+# Added awk line to ensure Dec has either a '+' or '-'.
+# usnob1 does not understand a Dec without one of them.
+#
 # Revision 1.2  2007/09/24 15:41:20  cjm
 # Rewritten using TMP_DIR, correct awk version for rd.awk.
 #
