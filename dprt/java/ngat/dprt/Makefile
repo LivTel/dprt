@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.19 2007-09-27 14:55:34 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.20 2007-10-02 11:13:51 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -15,7 +15,7 @@ SRCS 		= DpRtLibraryInterface.java DpRtLibraryNativeException.java \
 OBJS 		= $(SRCS:%.java=$(BINDIR)/%.class)
 DOCS 		= $(SRCS:%.java=$(DOCSDIR)/%.html)
 
-CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properties \
+CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properties ltccd4.dprt.properties \
 		ftccd1.dprt.properties ftccd2.dprt.properties ltobs9.dprt.properties \
 		supircam1.dprt.properties supircam2.dprt.properties \
 		ftspec1.dprt.properties ftspec2.dprt.properties \
@@ -78,6 +78,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.19  2007/09/27 14:55:34  cjm
+# Added frodospec1.dprt.properties.
+#
 # Revision 0.18  2007/07/06 13:19:25  cjm
 # Added frodospec.
 #
