@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.2 2007-09-25 10:56:59 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.3 2007-10-12 14:31:04 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -98,8 +98,8 @@ set NMATCH		= 0
 # input file. If the input file already has a WCS, we run remove_wcs.csh on it
 /bin/cp $inpfile ${inpfile}.bak
 
-
-/bin/echo "wcs_fit : Starting processing ${inpfile}."
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Starting processing ${inpfile}."
 
 #
 # There are various instrument dependent parameters. For each intrument we need to define
@@ -203,8 +203,9 @@ if ( $do_fixpix ) then
 endif
 
 ############# SExtractor #############
-/bin/echo "Starting SEx Pipe: ${inpfile}"
-/bin/echo "${MYBIN}sex -c ${MYBIN}astrom_pipe.sex ${inpfile}"
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Starting SEx Pipe: ${inpfile}"
+/bin/echo "${now_date_string} wcs_fit : ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex ${inpfile}"
 ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -DETECT_MINAREA $DETECT_MINAREA ${inpfile}
 ############# ---------- #############
 
@@ -224,7 +225,8 @@ endif
 
 /bin/mv -f image.cat  ${TMP_DIR}/${inpfile:r:t}_image.cat
 set N_STARS = `${awk_bin} '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat | /usr/bin/wc -l | ${awk_bin} '{print $1}'`
-/bin/echo "wcs_fit : Number of sources extracted by SEx: $N_STARS"
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Number of sources extracted by SEx: $N_STARS"
 
 if ( $N_STARS > $MAX_SEx_STARS ) then
     set SKY_RMS = `${MYBIN}iterstat 5 $inpfile | ${awk_bin} -F = 'NR==4 {print $2}' | ${awk_bin} '{print $1}'`
@@ -273,11 +275,12 @@ if ( "$SEx_FLAG" == "" ) then
     exit 13
 endif
 
-/bin/echo "wcs_fit : Used content of ${TMP_DIR}/${inpfile:r:t}_image.cat written by SEx:"
-/bin/echo "wcs_fit : X_IMAGE_FIELD : $X_IMAGE_FIELD"
-/bin/echo "wcs_fit : Y_IMAGE_FIELD : $Y_IMAGE_FIELD"
-/bin/echo "wcs_fit : MAG_BEST_FIELD: $MAG_BEST_FIELD"
-/bin/echo "wcs_fit : FWHM_IMAGE: $FWHM_IMAGE"
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Used content of ${TMP_DIR}/${inpfile:r:t}_image.cat written by SEx:"
+/bin/echo "${now_date_string} wcs_fit : X_IMAGE_FIELD : $X_IMAGE_FIELD"
+/bin/echo "${now_date_string} wcs_fit : Y_IMAGE_FIELD : $Y_IMAGE_FIELD"
+/bin/echo "${now_date_string} wcs_fit : MAG_BEST_FIELD: $MAG_BEST_FIELD"
+/bin/echo "${now_date_string} wcs_fit : FWHM_IMAGE: $FWHM_IMAGE"
 
 # Change FITS keywords from LT standards to those used by wcstools
 # We also need the value of PIXSCALE in order to test the SEx catalogue contents are sane
@@ -348,7 +351,8 @@ ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FI
 /bin/rm ${TMP_DIR}/tmp1 ${TMP_DIR}/tmp2 ${TMP_DIR}/tmp3 ${TMP_DIR}/tmp4
 /bin/rm ${TMP_DIR}/fwhm_limit.awk
 set N_STARS_TAKEN = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'` 
-/bin/echo "wcs_fit : N_STARS_TAKEN = $N_STARS_TAKEN"
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : N_STARS_TAKEN = $N_STARS_TAKEN"
 
 #
 # Read the rotator centre from the header. 
@@ -412,18 +416,19 @@ if ( ! -s ${TMP_DIR}/${RASTR}${DESTR}.usnob ) then
     	setenv TRUE_SIZE_X  10.0    # arcmin
     	setenv TRUE_SIZE_Y  10.0    # arcmin
 
-   	/bin/echo "wcs_fit : Retrieving USNOB file according to the following:"
-    	/bin/echo "wcs_fit : Center RA: $RA (${INPUT_RA})"
-    	/bin/echo "wcs_fit : Center DEC: $DE (${INPUT_DEC})"
-    	/bin/echo "wcs_fit : X Size (minutes): $TRUE_SIZE_X"
-    	/bin/echo "wcs_fit : Y Size (minutes): $TRUE_SIZE_Y"
+	set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+   	/bin/echo "${now_date_string} wcs_fit : Retrieving USNOB file according to the following:"
+    	/bin/echo "${now_date_string} wcs_fit : Center RA: $RA (${INPUT_RA})"
+    	/bin/echo "${now_date_string} wcs_fit : Center DEC: $DE (${INPUT_DEC})"
+    	/bin/echo "${now_date_string} wcs_fit : X Size (minutes): $TRUE_SIZE_X"
+    	/bin/echo "${now_date_string} wcs_fit : Y Size (minutes): $TRUE_SIZE_Y"
 
 	# First check if a local copy of USNOB is available.
     	# If yes, access it, otherwise go through internet.
     	# CRG, 01/2005
     	setenv USNOB_STATUS 1
-	/bin/echo "wcs_fit : Get USNOB from local copy"
-	/bin/echo "wcs_fit : ${MYBIN}/get_local_usnob.csh $RA  $DE  $TRUE_SIZE_X  ${TMP_DIR}/${RASTR}${DESTR}.usnob"
+	/bin/echo "${now_date_string} wcs_fit : Get USNOB from local copy"
+	/bin/echo "${now_date_string} wcs_fit : ${MYBIN}/get_local_usnob.csh $RA  $DE  $TRUE_SIZE_X  ${TMP_DIR}/${RASTR}${DESTR}.usnob"
 	${MYBIN}/get_local_usnob.csh $RA  $DE  $TRUE_SIZE_X  ${TMP_DIR}/${RASTR}${DESTR}.usnob
         setenv USNOB_STATUS $status
 	if ( ${USNOB_STATUS} != 0 ) then
@@ -443,19 +448,22 @@ endif
 # Create the starb version of the usnob file. The starb is what actually gets read by imwcs
 #
 if  ( ! -s ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb ) then
-    /bin/echo "wcs_fit : ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/${RASTR}${DESTR}.usnob >! ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb"
+    set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+    /bin/echo "${now_date_string} wcs_fit : ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/${RASTR}${DESTR}.usnob >! ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb"
     ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/${RASTR}${DESTR}.usnob >! ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb
 else
-    /bin/echo "wcs_fit : USNO.starb file ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb already available."
+    set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+    /bin/echo "${now_date_string} wcs_fit : USNO.starb file ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb already available."
     /bin/touch ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb
 endif
 ####### Start Cropping #######
 if ( ! -s ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ) then
-    /bin/echo "wcs_fit : No cropped catalogue: start cropping USNOB file..."
+    set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+    /bin/echo "${now_date_string} wcs_fit : No cropped catalogue: start cropping USNOB file..."
     setenv CROP_SIZE_X  6.0    # arcmin
     setenv CROP_SIZE_Y  6.0    # arcmin
 
-    /bin/echo "wcs_fit : ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null"
+    /bin/echo "${now_date_string} wcs_fit : ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null"
     ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null
     setenv STATUS $status
     if ( ${STATUS} ) then
@@ -472,10 +480,12 @@ endif
 # Create the cropped starb version of the usnob file.
 #
 if  ( ! -s ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb ) then
-    /bin/echo "wcs_fit : ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob >! ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb"
+    set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+    /bin/echo "${now_date_string} wcs_fit : ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob >! ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb"
     ${MYBIN}/tostartab_hhmmss.sh ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob >! ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb
 else
-    /bin/echo "wcs_fit : Cropped USNO.starb file ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb already available."
+    set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+    /bin/echo "${now_date_string} wcs_fit : Cropped USNO.starb file ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb already available."
     /bin/touch ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb
 endif
 
@@ -492,11 +502,12 @@ set STARBFILE = ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb
 
 set N_STARS_CAT = `${awk_bin} '/^[0-9]/' $STARBFILE | /usr/bin/wc -l | ${awk_bin} '{print $1}'`
 
-/bin/echo "wcs_fit : Input RA               : $RA (${INPUT_RA})"
-/bin/echo "wcs_fit : Input DEC              : $DE (${INPUT_DEC})"
-/bin/echo "wcs_fit : Extracted sources        N_STARS      : $N_STARS"
-/bin/echo "wcs_fit : Used for Astrometric fit N_STARS_TAKEN: $N_STARS_TAKEN"
-/bin/echo "wcs_fit : Catalogue sources number N_STARS_CAT  : $N_STARS_CAT"
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Input RA               : $RA (${INPUT_RA})"
+/bin/echo "${now_date_string} wcs_fit : Input DEC              : $DE (${INPUT_DEC})"
+/bin/echo "${now_date_string} wcs_fit : Extracted sources        N_STARS      : $N_STARS"
+/bin/echo "${now_date_string} wcs_fit : Used for Astrometric fit N_STARS_TAKEN: $N_STARS_TAKEN"
+/bin/echo "${now_date_string} wcs_fit : Catalogue sources number N_STARS_CAT  : $N_STARS_CAT"
 
 if ($N_STARS_CAT < $MIN_N_STARS ) then
     echo "wcs_fit : There are fewer than $MIN_N_STARS in catalogue. We cannot cross correlate against this."
@@ -547,10 +558,11 @@ else
 endif
 
 set WCS_WAS_RUN = 1
-/bin/echo "wcs_fit : Performing Astrometric Fit..."
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Performing Astrometric Fit..."
 
 #   Keep stdout and stderr of imwcs separate: (mod. CRG, 11/11/04)
-/bin/echo "wcs_fit : (${MYBIN}imwcs -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s 2 -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 -q i  -x $POINT_CENTX $POINT_CENTY -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
+/bin/echo "${now_date_string} wcs_fit : (${MYBIN}imwcs -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s 2 -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 -q i  -x $POINT_CENTX $POINT_CENTY -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
 (${MYBIN}imwcs -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s 2 -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 -q i  -x $POINT_CENTX $POINT_CENTY -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
 
 ########### ASTROMETRIC FIT: end   ###########
@@ -625,12 +637,13 @@ set CD2_1 = `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CD2_1`
 set CD2_1 = `/bin/echo "$CD2_1 * 3600" | /usr/bin/bc -l`
 set CD2_2 = `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CD2_2`
 set CD2_2 = `/bin/echo "$CD2_2 * 3600" | /usr/bin/bc -l`
-/bin/echo "wcs_fit : PIXSCALE:  $PIXSCALE"
-/bin/echo "wcs_fit : CD1_1   CD1_2:  $CD1_1  $CD1_2"
-/bin/echo "wcs_fit : CD2_1   CD2_2:  $CD2_1  $CD2_2"
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : PIXSCALE:  $PIXSCALE"
+/bin/echo "${now_date_string} wcs_fit : CD1_1   CD1_2:  $CD1_1  $CD1_2"
+/bin/echo "${now_date_string} wcs_fit : CD2_1   CD2_2:  $CD2_1  $CD2_2"
 set SCALECHANGE_1 = `/bin/echo "(sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| /usr/bin/bc -l| /bin/sed 's/\..*//g'`
 set SCALECHANGE_2 = `/bin/echo "(sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| /usr/bin/bc -l| /bin/sed 's/\..*//g'`
-/bin/echo "wcs_fit : Fitted Image: Scalechange 1: $SCALECHANGE_1 (0.1%)  Scalechange 2: $SCALECHANGE_2 (0.1%)"
+/bin/echo "${now_date_string} wcs_fit : Fitted Image: Scalechange 1: $SCALECHANGE_1 (0.1%)  Scalechange 2: $SCALECHANGE_2 (0.1%)"
 if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
     /bin/echo "wcs_fit : Fitted Image: CD matrix suggests plate scale changed by more than 1.0%. Bad."
     exit 23
@@ -649,11 +662,12 @@ if ( $RESID_TEST >= $MAX_FIT_RESIDUAL ) then
     exit 24
 endif
 
-/bin/echo "wcs_fit : Input RA,Dec, Rot = $INPUT_RA $INPUT_DEC $INPUT_ROT "
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Input RA,Dec, Rot = $INPUT_RA $INPUT_DEC $INPUT_ROT "
 set OUTPUT_RA  = `${MYBIN}gethead ${fittedfile} CRVAL1`
 set OUTPUT_DEC  = `${MYBIN}gethead ${fittedfile} CRVAL2`
 set OUTPUT_ROT  = `${MYBIN}gethead ${fittedfile} CROTA1`
-/bin/echo "wcs_fit : Output RA,Dec, Rot = $OUTPUT_RA $OUTPUT_DEC $OUTPUT_ROT "
+/bin/echo "${now_date_string} wcs_fit : Output RA,Dec, Rot = $OUTPUT_RA $OUTPUT_DEC $OUTPUT_ROT "
 # Calculate cos(dec) which will be required later for working out RA separations
 set COSDEC = `/bin/echo $OUTPUT_DEC | ${awk_bin} '{printf("%15.13f\n",cos($1*3.1415927/180))}'`
 set COSDEC = `/bin/echo $COSDEC | /bin/sed 's/-/_/'`
@@ -667,9 +681,10 @@ set DEL_DEC = ` /bin/echo " 10 k $OUTPUT_DEC $INPUT_DEC - 3600 * 1 k 1 / p " | /
 set INPUT_DEC = `/bin/echo $INPUT_DEC | /bin/sed 's/_/-/'`
 set DEL_RA = `/bin/echo " 10 k $OUTPUT_RA $INPUT_RA - $COSDEC * 3600 * 1 k 1 / p " | /usr/bin/dc `
 set DEL_ROT = ` /bin/echo " $OUTPUT_ROT $INPUT_ROT - 360 % 3 k 1 / p " | /usr/bin/dc `  
-/bin/echo "wcs_fit : Change induced by WCS fitting:"
-/bin/echo "wcs_fit :   RA change:    $DEL_RA arcsec"
-/bin/echo "wcs_fit :   dec change:    $DEL_DEC arcsec"
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Change induced by WCS fitting:"
+/bin/echo "${now_date_string} wcs_fit :   RA change:    $DEL_RA arcsec"
+/bin/echo "${now_date_string} wcs_fit :   dec change:    $DEL_DEC arcsec"
 ${MYBIN}sethead ${fittedfile} WCSDELRA=$DEL_RA / '[arcsec] Shift of fitted WCS w.r.t. nominal pointing'
 ${MYBIN}sethead ${fittedfile} WCSDELDE=$DEL_DEC / '[arcsec] Shift of fitted WCS w.r.t. nominal pointing'
 ${MYBIN}sethead ${fittedfile} WCSDELRO=$DEL_ROT / '[deg] Shift of fitted rotator WCS w.r.t. nominal'
@@ -678,8 +693,8 @@ set DEL_RA = `/bin/echo $DEL_RA | /bin/sed 's/-/_/'`
 set DEL_DEC = `/bin/echo $DEL_DEC | /bin/sed 's/-/_/'`
 set DEL_POINT = `/bin/echo " 10 k $DEL_DEC $DEL_DEC * $DEL_RA $DEL_RA * + v 0 k 1 / p" | /usr/bin/dc`
 ${MYBIN}sethead ${fittedfile} WCSDELPO=$DEL_POINT / '[arcsec] Shift of fitted WCS w.r.t. nominal'
-/bin/echo "wcs_fit : Pointing change : $DEL_POINT arcsec"
-/bin/echo "wcs_fit : Rot change:    $DEL_ROT deg"
+/bin/echo "${now_date_string} wcs_fit : Pointing change : $DEL_POINT arcsec"
+/bin/echo "${now_date_string} wcs_fit : Rot change:    $DEL_ROT deg"
 if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
     /bin/echo "wcs_fit : Pointing change too large ($DEL_POINT >= $MAX_POINT_CHANGE)."
     exit 25
@@ -700,7 +715,8 @@ endif
 # CATALOGUE LOOP: END
 # End of catalogue loop!
 #
-/bin/echo "wcs_fit : Create new file with WCS."
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Create new file with WCS."
 set final_file = ${output_fits_filename}
 /bin/mv ${inpfile}.bak $final_file
 # This is a nasty fudge. Ugly and not reliable. It could easily break at any time due to small changes in the
@@ -761,10 +777,20 @@ endif
 /bin/rm -f ${TMP_DIR}/${inpfile:r:t}_image.cat
 /bin/rm -f ${TMP_DIR}/${inpfile:r:t}.errwcsfit
 /bin/rm -f ${TMP_DIR}/${inpfile:r:t}.wcsfit
-/bin/echo "wcs_fit : Astrometric Fit script finished."
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+/bin/echo "${now_date_string} wcs_fit : Astrometric Fit script finished."
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2007/09/25 10:56:59  cjm
+# First version that managed to fit something on ltccd2.
+# MYBIN now setenv.
+# REFCAT now 3 (hardcoded atm).
+# Added missing PIXSCALE_DEGREES line.
+# Rewrote some awk's using ENVIRON array to use temporary .awk file - Solaris awk struggled with one of these.
+# Fixed some pathnames - made them absolute.
+# Rewrote dc commands using 'r' stack swap command, exists in Linux dc but not Solaris dc.
+#
 # Revision 1.1  2007/09/24 09:56:34  cjm
 # Initial revision
 #
