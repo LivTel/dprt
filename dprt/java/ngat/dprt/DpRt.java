@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRt.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.14 2006-05-16 17:09:34 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRt.java,v 0.15 2007-10-16 13:55:45 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -34,14 +34,14 @@ import ngat.util.logging.*;
 /**
  * This class is the start point for the Data Pipeline (Real Time Module).
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.14 $
+ * @version $Revision: 0.15 $
  */
 public class DpRt
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRt.java,v 0.14 2006-05-16 17:09:34 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRt.java,v 0.15 2007-10-16 13:55:45 cjm Exp $");
 	/**
 	 * The minimum port number.
 	 */
@@ -113,6 +113,8 @@ public class DpRt
 	 * @see #initLibDpRt
 	 * @see #initLoggers
 	 * @see #logLevelArgument
+	 * @see ngat.dprt.DpRtTCPServerConnectionThread#setDefaultAcknowledgeTime
+	 * @see ngat.dprt.DpRtTCPServerConnectionThread#setWcsFitAcknowledgeTime
 	 */
 	private void init() throws FileNotFoundException,IOException,NumberFormatException,DpRtLibraryNativeException,
 				   Exception
@@ -179,6 +181,8 @@ public class DpRt
 		{
 			time = status.getPropertyInteger("dprt.server_connection.default_acknowledge_time");
 			DpRtTCPServerConnectionThread.setDefaultAcknowledgeTime(time);
+			time = status.getPropertyInteger("dprt.server_connection.wcs_fit_acknowledge_time");
+			DpRtTCPServerConnectionThread.setWcsFitAcknowledgeTime(time);
 		}
 		catch(NumberFormatException e)
 		{
@@ -821,6 +825,9 @@ public class DpRt
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.14  2006/05/16 17:09:34  cjm
+// gnuify: Added GNU General Public License.
+//
 // Revision 0.13  2004/04/15 14:07:20  cjm
 // Fixed logger copy failure due to property missspelling on DpRtLibrary implementation.
 //
