@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.8 2007-09-04 13:01:38 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ccs/DpRtLibrary.java,v 0.9 2007-10-16 14:03:58 cjm Exp $
 package ngat.dprt.ccs;
 
 import java.lang.*;
@@ -35,14 +35,14 @@ import ngat.util.logging.*;
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
  * FITS file data reduction, for the CCD Control System (CCS).
  * @author Chris Mottram LJMU
- * @version $Revision: 0.8 $
+ * @version $Revision: 0.9 $
  */
 public class DpRtLibrary implements DpRtLibraryInterface
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.8 2007-09-04 13:01:38 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 0.9 2007-10-16 14:03:58 cjm Exp $");
 	/**
 	 * Instance of FITS filename handling code, for lock file/ pipeline processing code.
 	 */
@@ -90,7 +90,8 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	/**
 	 * Native wrapper to a libdprt routine to reduce an input calibrate FITS image.
 	 * @param inputFilename A string giving the location of the input filename.
-	 * @param reduceDone A calibrate reduce done object, whose fields should be filled in by the reduction process.
+	 * @param calibrateReduceDone A calibrate reduce done object, 
+	 *      whose fields should be filled in by the reduction process.
  	 * @return The routine returns true if the JNI calls were completed successfully, and 
 	 * 	the done object was suitably filled in. The actual process might have failed, but so long
 	 *	as the error number/string was placed into the done object successfully, the routine
@@ -100,7 +101,8 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	/**
 	 * Native wrapper to a libdprt routine to reduce an input expose FITS image.
 	 * @param inputFilename A string giving the location of the input filename.
-	 * @param reduceDone An expose reduce done object, whose fields should be filled in by the reduction process.
+	 * @param exposeReduceDone An expose reduce done object, 
+	 *      whose fields should be filled in by the reduction process.
  	 * @return The routine returns true if the JNI calls were completed successfully, and 
 	 * 	the done object was suitably filled in. The actual process might have failed, but so long
 	 *	as the error number/string was placed into the done object successfully, the routine
@@ -175,7 +177,7 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 * This is used when querying properties from the C and Java layer.
 	 * This method should be called after DpRtLibrary instance has been constructed, before initialise
 	 * (which may wish to query the properties). 
-	 * @param status The instance of DpRtStatus to use.
+	 * @param s The instance of DpRtStatus to use.
 	 * @see #DpRt_Set_Status
 	 * @see #initialise
 	 * @see #status
@@ -395,7 +397,7 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 * @see #getLockFilename
 	 * @see #logger
 	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_REAL_TIME
-	 * @see ngat.dprt.DpRtConstants.DPRT_LOG_LEVEL_LOCKFILES
+	 * @see ngat.dprt.DpRtConstants#DPRT_LOG_LEVEL_LOCKFILES
 	 */
 	protected void lockReducedFilename(String unreducedFilename)
 	{
@@ -439,7 +441,7 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 * @see #getLockFilename
 	 * @see #logger
 	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_REAL_TIME
-	 * @see ngat.dprt.DpRtConstants.DPRT_LOG_LEVEL_LOCKFILES
+	 * @see ngat.dprt.DpRtConstants#DPRT_LOG_LEVEL_LOCKFILES
 	 */
 	protected void unlockReducedFilename(String unreducedFilename)
 	{
@@ -475,7 +477,7 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 * @see #fitsFilename
 	 * @see #logger
 	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_REAL_TIME
-	 * @see ngat.dprt.DpRtConstants.DPRT_LOG_LEVEL_LOCKFILES
+	 * @see ngat.dprt.DpRtConstants#DPRT_LOG_LEVEL_LOCKFILES
 	 */
 	protected String getLockFilename(String unreducedFilename)
 	{
@@ -517,7 +519,7 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	 * @see #logger
 	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_REAL_TIME
 	 * @see ngat.fits.FitsFilename#PIPELINE_PROCESSING_FLAG_OFF_LINE
-	 * @see ngat.dprt.DpRtConstants.DPRT_LOG_LEVEL_LOCKFILES
+	 * @see ngat.dprt.DpRtConstants#DPRT_LOG_LEVEL_LOCKFILES
 	 */
 	protected String getProcessedFilename(String unreducedFilename,String pipelineProcessingFlag) throws Exception
 	{
@@ -608,6 +610,10 @@ public class DpRtLibrary implements DpRtLibraryInterface
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.8  2007/09/04 13:01:38  cjm
+// Added wcs fit script calling.
+// runScript and wcsFit methods and other changes.
+//
 // Revision 0.7  2006/05/16 17:10:38  cjm
 // gnuify: Added GNU General Public License.
 //

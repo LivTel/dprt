@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtLibrary.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/scs/DpRtLibrary.java,v 1.3 2007-08-21 15:35:20 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/scs/DpRtLibrary.java,v 1.4 2007-10-16 14:03:30 cjm Exp $
 package ngat.dprt.scs;
 
 import java.lang.*;
@@ -33,14 +33,14 @@ import ngat.util.logging.*;
  * This class supports a JNI interface to the Data Pipeline (Real Time) C library for real time
  * FITS file data reduction, for the CCD Control System (CCS).
  * @author Chris Mottram LJMU
- * @version $Revision: 1.3 $
+ * @version $Revision: 1.4 $
  */
 public class DpRtLibrary implements DpRtLibraryInterface
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 1.3 2007-08-21 15:35:20 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtLibrary.java,v 1.4 2007-10-16 14:03:30 cjm Exp $");
 
 // DpRt.h
 	/**
@@ -72,7 +72,8 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	/**
 	 * Native wrapper to a libdprt routine to reduce an input calibrate FITS image.
 	 * @param inputFilename A string giving the location of the input filename.
-	 * @param reduceDone A calibrate reduce done object, whose fields should be filled in by the reduction process.
+	 * @param calibrateReduceDone A calibrate reduce done object, 
+	 *      whose fields should be filled in by the reduction process.
  	 * @return The routine returns true if the JNI calls were completed successfully, and 
 	 * 	the done object was suitably filled in. The actual process might have failed, but so long
 	 *	as the error number/string was placed into the done object successfully, the routine
@@ -82,7 +83,8 @@ public class DpRtLibrary implements DpRtLibraryInterface
 	/**
 	 * Native wrapper to a libdprt routine to reduce an input expose FITS image.
 	 * @param inputFilename A string giving the location of the input filename.
-	 * @param reduceDone An expose reduce done object, whose fields should be filled in by the reduction process.
+	 * @param exposeReduceDone An expose reduce done object, 
+	 *      whose fields should be filled in by the reduction process.
  	 * @return The routine returns true if the JNI calls were completed successfully, and 
 	 * 	the done object was suitably filled in. The actual process might have failed, but so long
 	 *	as the error number/string was placed into the done object successfully, the routine
@@ -293,6 +295,9 @@ public class DpRtLibrary implements DpRtLibraryInterface
 }
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.3  2007/08/21 15:35:20  cjm
+// Added wcsFit parameter.
+//
 // Revision 1.2  2006/05/16 17:11:16  cjm
 // gnuify: Added GNU General Public License.
 //
