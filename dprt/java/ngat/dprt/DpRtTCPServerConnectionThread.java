@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // DpRtTCPServerConnectionThread.java
-// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.13 2007-08-21 15:23:02 cjm Exp $
+// $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/DpRtTCPServerConnectionThread.java,v 0.14 2007-10-16 13:56:59 cjm Exp $
 package ngat.dprt;
 
 import java.lang.*;
@@ -33,18 +33,22 @@ import ngat.message.INST_DP.*;
 /**
  * This class extends the TCPServerConnectionThread class for the DpRt application.
  * @author Chris Mottram, LJMU
- * @version $Revision: 0.13 $
+ * @version $Revision: 0.14 $
  */
 public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 {
 	/**
 	 * Revision Control System id string, showing the version of the Class.
 	 */
-	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.13 2007-08-21 15:23:02 cjm Exp $");
+	public final static String RCSID = new String("$Id: DpRtTCPServerConnectionThread.java,v 0.14 2007-10-16 13:56:59 cjm Exp $");
 	/**
 	 * Default time taken to respond to a command. This is a class-wide field.
 	 */
 	private static int defaultAcknowledgeTime = 60*1000;
+	/**
+	 * Time taken to respond to a command that includes wcs fitting. This is a class-wide field.
+	 */
+	private static int wcsFitAcknowledgeTime = 90*1000;
 	/**
 	 * The DpRt object.
 	 */
@@ -70,11 +74,22 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 	/**
 	 * Class method to set the value of <a href="#defaultAcknowledgeTime">defaultAcknowledgeTime</a>. 
+	 * @param m The time, in milliseconds.
 	 * @see #defaultAcknowledgeTime
 	 */
 	public static void setDefaultAcknowledgeTime(int m)
 	{
 		defaultAcknowledgeTime = m;
+	}
+
+	/**
+	 * Class method to set the value of <a href="#wcsFitAcknowledgeTime">wcsFitAcknowledgeTime</a>. 
+	 * @param m The time, in milliseconds.
+	 * @see #wcsFitAcknowledgeTime
+	 */
+	public static void setWcsFitAcknowledgeTime(int m)
+	{
+		wcsFitAcknowledgeTime = m;
 	}
 
 	/**
@@ -124,6 +139,8 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 	 * 	field set to the time the command will take to process.
 	 * @see ngat.message.base.ACK
 	 * @see ngat.message.base.ACK#setTimeToComplete
+	 * @see #defaultAcknowledgeTime
+	 * @see #wcsFitAcknowledgeTime
 	 */
 	protected ACK calculateAcknowledgeTime()
 	{
@@ -151,7 +168,12 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 		}
 		else if((command instanceof EXPOSE_REDUCE))
 		{
-			milliseconds = defaultAcknowledgeTime;
+			EXPOSE_REDUCE exposeReduceCommand = (EXPOSE_REDUCE)command;
+
+			if(exposeReduceCommand.getWcsFit())
+				milliseconds = wcsFitAcknowledgeTime;
+			else
+				milliseconds = defaultAcknowledgeTime;
 		}
 		else if((command instanceof MAKE_MASTER_BIAS))
 		{
@@ -376,6 +398,9 @@ public class DpRtTCPServerConnectionThread extends TCPServerConnectionThread
 
 //
 // $Log: not supported by cvs2svn $
+// Revision 0.13  2007/08/21 15:23:02  cjm
+// Added wcsFit parameter to DpRtExposeReduce DpRtLibrary call.
+//
 // Revision 0.12  2006/05/16 17:09:39  cjm
 // gnuify: Added GNU General Public License.
 //
