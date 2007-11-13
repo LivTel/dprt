@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.4 2007-11-13 13:49:32 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.5 2007-11-13 15:02:03 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -662,7 +662,6 @@ if ( ${resid_test} == 1 ) then
     /bin/echo "wcs_fit : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
     exit 24
 endif
-
 set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 /bin/echo "${now_date_string} wcs_fit : Input RA,Dec, Rot = $INPUT_RA $INPUT_DEC $INPUT_ROT "
 set OUTPUT_RA  = `${MYBIN}gethead ${fittedfile} CRVAL1`
@@ -783,6 +782,9 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2007/11/13 13:49:32  cjm
+# Changed max_fit_residual test - Raised limit from 1 to 1.3", by making test using bc rather than tcsh (integer only).
+#
 # Revision 1.3  2007/10/12 14:31:04  cjm
 # Added timing information to logging.
 #
