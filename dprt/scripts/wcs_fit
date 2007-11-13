@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.3 2007-10-12 14:31:04 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.4 2007-11-13 13:49:32 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -35,7 +35,7 @@ set THR_FRACTION 	= 50	# (%) Per centage of catalogue stars which must bet match
 set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth attempting a fit
 set MAX_ROT_CHANGE 	= 5	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
 set MAX_POINT_CHANGE 	= 120	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
-set MAX_FIT_RESIDUAL	= 1	# (arcsec) Integer. Largest mean fit residual before we suspect WCS fit failure
+set max_fit_residual    = "1.3"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
 
 if ( -d /home/dev/tmp ) then
@@ -656,9 +656,10 @@ set XYRESID = `/bin/grep "^# Mean  dx" ${TMP_DIR}/${inpfile:r:t}.wcsfit | /usr/b
 set RDRESID = `/bin/grep "^# Mean dra" ${TMP_DIR}/${inpfile:r:t}.wcsfit | /usr/bin/tail -1 | ${awk_bin} '{print $NF}'`
 /bin/echo "XY residual = $XYRESID RA,dec residual = $RDRESID"
 ${MYBIN}sethead ${fittedfile} WCSRDRES="$RDRESID" / '[arcsec] WCS fitting residuals, mean and sigma'
-set RESID_TEST = `/bin/echo $RDRESID | /usr/bin/cut -d"/" -f1 | /bin/sed 's/\..*//' `
-if ( $RESID_TEST >= $MAX_FIT_RESIDUAL ) then
-    /bin/echo "wcs_fit : Fitting residuals > $MAX_FIT_RESIDUAL arcsec. Fit suspect and will not be used."
+set fit_residual=`/bin/echo $RDRESID | /usr/bin/cut -d"/" -f1`
+set resid_test=`/bin/echo "(${fit_residual} > ${max_fit_residual})" | /usr/bin/bc`
+if ( ${resid_test} == 1 ) then
+    /bin/echo "wcs_fit : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
     exit 24
 endif
 
@@ -782,6 +783,9 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2007/10/12 14:31:04  cjm
+# Added timing information to logging.
+#
 # Revision 1.2  2007/09/25 10:56:59  cjm
 # First version that managed to fit something on ltccd2.
 # MYBIN now setenv.
