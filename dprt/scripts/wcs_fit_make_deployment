@@ -1,0 +1,180 @@
+#!/bin/csh
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit_make_deployment,v 1.1 2008-12-01 10:41:37 cjm Exp $
+# Version: $Revision: 1.1 $
+# By $Author: cjm $
+# Make a deployment of wcs_fit and associated executables, for the specified HOSTTYPE.
+# Usage:
+#	wcs_fit_make_deployment <machine>
+if ( ${#argv} != 1 ) then
+	echo "Please specify a deployment machine."
+	echo "$0 <machine>"
+	exit 1
+endif
+set machine_name = "$1"
+if ( "${machine_name}" == "-help") then
+	echo "$0 <machine>"
+	exit 0
+endif
+# grep
+if( ${HOSTTYPE} == "sun4" ) then
+    set grep_binname = "/usr/xpg4/bin/grep"
+else
+    set grep_binname = "/bin/grep"
+endif
+# dev root directory
+set dev_dir 		= "~dev"
+# dev binary root directory
+set dev_bin_dir 	= "${dev_dir}/bin"
+# directory script was run in
+set current_dir		= `pwd`
+# temporary directory containing root of deployment tree (which becomes root of tar).
+set deployment_dir 	= "/tmp/wcs_fit_deployment"
+# temporary directory for deployment temporary files
+set deployment_tmp_dir 	= "/tmp/wcs_fit_deployment/tmp"
+# temporary directory containing root icc directory.
+set deployment_icc_dir 	= "/tmp/wcs_fit_deployment/icc/wcs_fit"
+# temporary directory containing root bin directory.
+set deployment_bin_dir 	= "/tmp/wcs_fit_deployment/icc/wcs_fit/bin"
+# directory location of tar
+set deployment_tar_dir 	= "${dev_dir}/public_html/dprt/deployment"
+# name of tar file
+set deployment_tar 	= "wcs_fit_deployment_${machine_name}.tar"
+
+if (-d ${deployment_dir}) then
+	echo "Deployment directory ${deployment_dir} already exists:clearing..."
+	rm -rf ${deployment_dir}
+endif
+#
+# Create directory structure
+#
+echo "Creating directory structure..."
+set dir_count = 0
+set dir_list = "${deployment_dir} ${deployment_bin_dir} ${deployment_dir}/icc/tmp/wcs"
+foreach dir ( ${dir_list} )
+	mkdir -p ${dir}
+	if ($status != 0) then
+	   echo "Failed to make directory ${dir}"
+	   exit 2
+	endif
+	@ dir_count ++
+end
+echo "${dir_count} directories created."
+#
+# C libraries
+# We need: libcfitsio.so libdprt_libfits.so liblt_filenames.so
+# They should all be in: /icc/bin/lib/${HOSTTYPE}
+#
+#
+# C binary programs
+#
+echo "Copying C binaries..."
+set dir_list = "dprt/wcs_fit/${HOSTTYPE}"
+set dir_count = 0
+set binary_count = 0
+# clean out deployment_tmp_dir
+cd ${deployment_dir}
+rm -rf ${deployment_tmp_dir}
+mkdir ${deployment_tmp_dir}
+cd ${deployment_bin_dir}
+# go through directory list
+foreach dir ( ${dir_list} )
+	echo "C binary directory : ${dir}"
+# get file list
+	find ${dev_bin_dir}/${dir}/* > ${deployment_tmp_dir}/file_list.txt
+	foreach file ( `cat ${deployment_tmp_dir}/file_list.txt` )
+# check file is an executable
+# "ELF 32-bit MSB executable" for Solaris only!
+# "ELF 32-bit LSB executable" for Linux only!
+		file ${file} | ${grep_binname} -q "ELF 32-bit [LM]SB executable"
+		set grep_status = $status
+		if ( ${grep_status} == 0 ) then
+			echo "Deploying binary ${file}."
+# copy file to deployment location
+			cp ${file} ${deployment_bin_dir}
+			set cp_status = $status
+			if( ${cp_status} != 0 ) then
+			    echo "Copy failed: ${file} to ${deployment_bin_dir}"
+			    exit 3
+			endif
+			@ binary_count ++
+# ident file and add to list
+			( ident ${dir}/${file:t} > ${deployment_tmp_dir}/ident.txt ) >& ${deployment_tmp_dir}/ident_error.txt
+			set ident_string = `cat ${deployment_tmp_dir}/ident.txt`
+			echo "${ident_string}" >>! ${deployment_tmp_dir}/ident_list.txt
+		else
+			echo "NOT Deploying ${file}."
+		endif
+	end
+	rm -f ${deployment_tmp_dir}/file_list.txt
+# keep track of number of dirs processed
+	@ dir_count ++
+end
+if ( -r ${deployment_tmp_dir}/ident_list.txt) then
+	cat ${deployment_tmp_dir}/ident_list.txt >>! ${deployment_icc_dir}/ident_list.txt 
+endif
+cd ${deployment_dir}
+rm -rf ${deployment_tmp_dir}
+echo "${binary_count} C binary programs in ${dir_count} directories copied."
+#
+# Scripts
+#
+echo "Copying scripts..."
+set file_list = "dprt/wcs_fit/${HOSTTYPE}/blank_wcs_fit dprt/wcs_fit/${HOSTTYPE}/get_local_usnob.csh dprt/wcs_fit/${HOSTTYPE}/rd.awk dprt/wcs_fit/${HOSTTYPE}/tostartab_hhmmss.sh dprt/wcs_fit/${HOSTTYPE}/wcs_fit dprt/wcs_fit/${HOSTTYPE}/remove_wcs.csh"
+set file_count = 0
+cd ${dev_dir}
+foreach file ( ${file_list} )
+#    set new_file = `echo ${file} | sed "s#${machine_name}\.##" | sed "s#${HOSTTYPE}\.##"`
+    cp ${dev_bin_dir}/${file} ${deployment_bin_dir}
+    set cp_status = $status
+    if( ${cp_status} != 0 ) then
+	echo "Copy failed: ${dev_bin_dir}/${file} to ${deployment_bin_dir}/${new_file}"
+	exit 4
+    endif
+    @ file_count ++
+end
+echo "${file_count} scripts copied."
+#
+# Configs
+#
+echo "Copying configuration files..."
+set file_list = "dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.sex dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.param"
+set file_count = 0
+cd ${dev_dir}
+foreach file ( ${file_list} )
+#    set new_file = `echo ${file} | sed "s#${machine_name}.##"`
+    cp ${dev_bin_dir}/${file} ${deployment_bin_dir}
+    set cp_status = $status
+    if( ${cp_status} != 0 ) then
+	echo "Copy failed: ${dev_bin_dir}/${file} to ${deployment_bin_dir}"
+	exit 5
+    endif
+    @ file_count ++
+end
+echo "${file_count} configuration files copied."
+#
+# Tidy deployment temp
+#
+cd ${deployment_dir}
+rm -rf ${deployment_tmp_dir}
+#
+# Create deployment tar
+#
+echo "--------------------------"
+echo "Creating deployment tar..."
+cd ${deployment_dir}
+tar cvf ${deployment_tar_dir}/${deployment_tar} .
+echo "GZipping deployment tar..."
+cd ${deployment_tar_dir}
+rm -f ${deployment_tar}.gz
+gzip ${deployment_tar}
+echo "Deployment tar : ${deployment_tar_dir}/${deployment_tar}.gz"
+#echo "Installation script : ${current_dir}/ccs_tar_install"
+rm -rf ${deployment_dir}
+echo "Download from http://ltdevsrv.livjm.ac.uk/~dev/dprt/deployment/index.html."
+echo "Download ${deployment_tar}.gz "
+#ccs_tar_install icc_cshrc icc_cshrc_edit.awk README.DEPLOYMENT
+echo "Deployment ready."
+
+#
+# $Log: not supported by cvs2svn $
+#
