@@ -18,6 +18,8 @@ set i=1
 if ( ! ${?MYBIN} ) then
     if ( -d /icc/wcs_fit/bin/ ) then
 	setenv MYBIN /icc/wcs_fit/bin/
+    else if ( -d /dprt/wcs_fit/bin/ ) then
+	setenv MYBIN /dprt/wcs_fit/bin/
     else if ( -d /usr/local/bin/wcs/ ) then
 	setenv MYBIN /usr/local/bin/wcs/
     else
@@ -120,6 +122,10 @@ ${awk_bin} -f ${MYBIN}rd.awk  ${TMP_DIR}/${FIL:r:t}.ori >> ${FIL}
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2007/09/26 12:52:51  cjm
+# Changed method of determining whether to add a '+' to Dec, so it
+# works under Solaris as well.
+#
 # Revision 1.3  2007/09/26 12:26:31  cjm
 # Added awk line to ensure Dec has either a '+' or '-'.
 # usnob1 does not understand a Dec without one of them.
