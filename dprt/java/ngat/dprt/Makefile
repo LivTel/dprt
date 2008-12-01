@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.21 2008-01-11 15:03:01 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.22 2008-12-01 15:25:18 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -20,7 +20,7 @@ CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properti
 		supircam1.dprt.properties supircam2.dprt.properties \
 		ftspec1.dprt.properties ftspec2.dprt.properties \
 		spectrograph.dprt.properties nuview1.dprt.properties ratcam1.dprt.properties \
-		frodospec1.dprt.properties estar6.dprt.properties 
+		frodospec1.dprt.properties estar6.dprt.properties datared.dprt.properties
 CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
 
 DIRS 		= ccs scs supircam ftspec grope frodospec
@@ -78,6 +78,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.21  2008/01/11 15:03:01  cjm
+# Added estar6 config for FrodoSpec testing.
+#
 # Revision 0.20  2007/10/02 11:13:51  cjm
 # Added ltccd4.dprt.properties.
 #
