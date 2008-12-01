@@ -50,6 +50,8 @@ if ( -d /home/dev/tmp ) then
 	set base_tmp_dir = /home/dev/tmp
     else if ( -d /icc/tmp ) then
 	set base_tmp_dir = /icc/tmp
+    else if ( -d /dprt/tmp ) then
+	set base_tmp_dir = /dprt/tmp
     else
 	/bin/echo "get_local_usnob.csh : Failed to find a base tmp dir."
 	exit 3
@@ -122,6 +124,9 @@ ${awk_bin} -f ${MYBIN}rd.awk  ${TMP_DIR}/${FIL:r:t}.ori >> ${FIL}
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2008/12/01 14:38:23  cjm
+# Added /dprt path.
+#
 # Revision 1.4  2007/09/26 12:52:51  cjm
 # Changed method of determining whether to add a '+' to Dec, so it
 # works under Solaris as well.
