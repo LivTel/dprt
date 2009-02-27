@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.22 2008-12-01 15:25:18 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.23 2009-02-27 15:16:57 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -40,7 +40,7 @@ DpRtTCPServerConnectionThread.class: DpRtConstants.class
 config: $(CONFIG_OBJS)
 
 $(CONFIG_BINDIR)/%.properties: %.properties
-	$(CP) $< $@
+	$(CP) -f $< $@
 
 checkout:
 	$(CO) $(CO_OPTIONS) $(SRCS)
@@ -78,6 +78,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.22  2008/12/01 15:25:18  cjm
+# Added datared.dprt.properties.
+#
 # Revision 0.21  2008/01/11 15:03:01  cjm
 # Added estar6 config for FrodoSpec testing.
 #
