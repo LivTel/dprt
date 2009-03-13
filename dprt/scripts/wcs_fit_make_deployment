@@ -1,6 +1,6 @@
 #!/bin/csh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit_make_deployment,v 1.1 2008-12-01 10:41:37 cjm Exp $
-# Version: $Revision: 1.1 $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit_make_deployment,v 1.2 2009-03-13 15:33:51 cjm Exp $
+# Version: $Revision: 1.2 $
 # By $Author: cjm $
 # Make a deployment of wcs_fit and associated executables, for the specified HOSTTYPE.
 # Usage:
@@ -137,15 +137,15 @@ echo "${file_count} scripts copied."
 # Configs
 #
 echo "Copying configuration files..."
-set file_list = "dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.sex dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.param"
+set file_list = "dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.sex.${machine_name} dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.param"
 set file_count = 0
 cd ${dev_dir}
 foreach file ( ${file_list} )
-#    set new_file = `echo ${file} | sed "s#${machine_name}.##"`
-    cp ${dev_bin_dir}/${file} ${deployment_bin_dir}
+    set new_file = `echo ${file} | sed "s#.${machine_name}##"`
+    cp ${dev_bin_dir}/${file} ${deployment_bin_dir}/${new_file}
     set cp_status = $status
     if( ${cp_status} != 0 ) then
-	echo "Copy failed: ${dev_bin_dir}/${file} to ${deployment_bin_dir}"
+	echo "Copy failed: ${dev_bin_dir}/${file} to ${deployment_bin_dir}/${new_file}"
 	exit 5
     endif
     @ file_count ++
@@ -177,4 +177,7 @@ echo "Deployment ready."
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2008/12/01 10:41:37  cjm
+# Initial revision
+#
 #
