@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.7 2009-03-18 10:00:44 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.8 2009-03-19 11:56:41 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -213,12 +213,19 @@ endsw
 if ( $do_fixpix ) then
   ${MYBIN}fixpix ${inpfile} $fixpix_param 
 endif
+# The existence of CDELT[12] in the FITS header set to 0 seems to confuse sex
+# If these values exist delete them before calling sex
+# ignore fits_delete_keyword_value return value - presumably will fail if keyword does not exist
+${MYBIN}fits_delete_keyword_value ${inpfile} CDELT1
+${MYBIN}fits_delete_keyword_value ${inpfile} CDELT2
+${MYBIN}fits_delete_keyword_value ${inpfile} CRPIX1
+${MYBIN}fits_delete_keyword_value ${inpfile} CRPIX2
 
 ############# SExtractor #############
 set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 /bin/echo "${now_date_string} wcs_fit : Starting SEx Pipe: ${inpfile}"
-/bin/echo "${now_date_string} wcs_fit : ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -DETECT_MINAREA $DETECT_MINAREA -PIXEL_SCALE 1 ${inpfile}"
-${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -DETECT_MINAREA $DETECT_MINAREA -PIXEL_SCALE 1 ${inpfile}
+/bin/echo "${now_date_string} wcs_fit : ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -DETECT_MINAREA $DETECT_MINAREA ${inpfile}"
+${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -DETECT_MINAREA $DETECT_MINAREA ${inpfile}
 ############# ---------- #############
 
 ###Below: managing the sex files image.dat->wcs.cat
@@ -243,8 +250,8 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 if ( $N_STARS > $MAX_SEx_STARS ) then
     set SKY_RMS = `${MYBIN}iterstat 5 $inpfile | ${awk_bin} -F = 'NR==4 {print $2}' | ${awk_bin} '{print $1}'`
     set SEx_THRESH = `/bin/echo "$SKY_RMS 5 * p" | /usr/bin/dc`
-    /bin/echo "${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -PIXEL_SCALE 1 -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile"
-    ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -PIXEL_SCALE 1 -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile
+    /bin/echo "${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile"
+    ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile
     set N_STARS = `${awk_bin} '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat| /usr/bin/wc -l | ${awk_bin} '{print $1}'`
     /bin/echo "wcs_fit : Number of sources extracted by SEx at $SEx_THRESH=$SEx_THRESH (5 iterstat sigma) : $N_STARS"
   endif
@@ -794,6 +801,11 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.7  2009/03/18 10:00:44  cjm
+# Fixed sextractor comment.
+# Added -PIXEL_SCALE 1 to sex command line, to counteract L1 DpRt adding 0 CDELT values,
+# see bug 1436 for details.
+#
 # Revision 1.6  2008/12/01 14:35:35  cjm
 # Added /dprt directory config.
 #
