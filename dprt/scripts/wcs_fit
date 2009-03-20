@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.9 2009-03-20 15:22:30 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.10 2009-03-20 15:38:51 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -347,6 +347,8 @@ if ( "${os_name}" == "SunOS" ) then
     /bin/echo "${now_date_string} wcs_fit : Sort by magnitude : /bin/sort -n +$MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1"
     /bin/sort -n +$MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1
 else if ( "${os_name}" == "Linux" ) then
+    # Solaris +n is equivalent to -k (n+1)
+    @ MAG_SORT_FIELD ++
     /bin/echo "${now_date_string} wcs_fit : Sort by magnitude : /bin/sort -n -k $MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1"
     /bin/sort -n -k $MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1
 endif
@@ -809,6 +811,9 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.9  2009/03/20 15:22:30  cjm
+# Trying to fix sort for Linux.
+#
 # Revision 1.8  2009/03/19 11:56:41  cjm
 # Removed PIXEL_SCALE sex parameter  -this made no difference.
 # Added code to delete CDELT1/CDELT2/CRPIX1/CRPIX2 from FITS header before calling sex.
