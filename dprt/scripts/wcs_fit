@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.10 2009-03-20 15:38:51 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.11 2009-03-20 18:07:09 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -340,6 +340,22 @@ set SEEING_PIX = `/bin/echo "3 k $SEEING $PIXSCALE / p" | /usr/bin/dc`
 # Strip out just the $MAX_N_STARS best stars from *.dat
 # Then reformat the data  -> *.cat which will get used in the WCS
 #
+# delete old tmp files from last time
+if ( -r ${TMP_DIR}/tmp1 ) then
+    /bin/rm -f ${TMP_DIR}/tmp1 
+endif
+if ( -r ${TMP_DIR}/tmp2 ) then
+    /bin/rm -f ${TMP_DIR}/tmp2 
+endif
+if ( -r ${TMP_DIR}/tmp3 ) then
+    /bin/rm -f ${TMP_DIR}/tmp3 
+endif
+if ( -r ${TMP_DIR}/tmp4 ) then
+    /bin/rm -f ${TMP_DIR}/tmp4
+endif
+if ( -r ${TMP_DIR}/fwhm_limit.awk ) then
+    /bin/rm -f ${TMP_DIR}/fwhm_limit.awk
+endif
 
 set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 # Sort by magnitude to tmp1
@@ -368,8 +384,11 @@ if ( $FWHM_IMAGE_LIMIT < $THREE_ARCSEC_PIX ) setenv FWHM_IMAGE_LIMIT $THREE_ARCS
 /bin/echo '( ( $'"${SEx_FLAG}"' == 0 )  && ( ! /^#/ ) && ( $'"${FWHM_IMAGE}"' > 1 ) && ( $'"${FWHM_IMAGE}"' < '"${FWHM_IMAGE_LIMIT}"' ) )' >> ${TMP_DIR}/fwhm_limit.awk
 /bin/echo "wcs_fit : ${TMP_DIR}/fwhm_limit.awk contents:"
 /bin/cat ${TMP_DIR}/fwhm_limit.awk
-/bin/echo "wcs_fit : ${TMP_DIR}/fwhm_limit.awk ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2"
-${TMP_DIR}/fwhm_limit.awk ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2
+/bin/echo "wcs_fit : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2"
+# NB must prepend ${awk_bin} -f to this command
+# This is because ${TMP_DIR}/fwhm_limit.awk is on an nfs mount, running via DpRt as root.
+# root not being a real user on the nfs mount cannot directly execute the script, but can via executing ${awk_bin}
+${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2
 # Ensure the contents of MAG_BEST_FIELD field are < 99 (${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3)
 ${awk_bin} '( $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3
 
@@ -377,8 +396,8 @@ ${awk_bin} '( $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2 > ${TMP_DIR}/t
 /usr/bin/head -$MAX_N_STARS ${TMP_DIR}/tmp3 > ${TMP_DIR}/tmp4
 # Reformat the file to what is required by imwcs
 ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4 > ${TMP_DIR}/${inpfile:r:t}_wcs.cat
-/bin/rm ${TMP_DIR}/tmp1 ${TMP_DIR}/tmp2 ${TMP_DIR}/tmp3 ${TMP_DIR}/tmp4
-/bin/rm ${TMP_DIR}/fwhm_limit.awk
+#/bin/rm -f ${TMP_DIR}/tmp1 ${TMP_DIR}/tmp2 ${TMP_DIR}/tmp3 ${TMP_DIR}/tmp4
+#/bin/rm -f ${TMP_DIR}/fwhm_limit.awk
 set N_STARS_TAKEN = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'` 
 set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 /bin/echo "${now_date_string} wcs_fit : N_STARS_TAKEN = $N_STARS_TAKEN"
@@ -811,6 +830,9 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.10  2009/03/20 15:38:51  cjm
+# Changed Linux sort field number by one, Solaris +n is equivalent to -k (n+1) ?
+#
 # Revision 1.9  2009/03/20 15:22:30  cjm
 # Trying to fix sort for Linux.
 #
