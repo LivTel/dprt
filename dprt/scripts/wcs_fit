@@ -1,5 +1,5 @@
 #!/bin/tcsh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.8 2009-03-19 11:56:41 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit,v 1.9 2009-03-20 15:22:30 cjm Exp $
 # wcs_fit <input FITS filename> <output FITS filename> 
 if ( $#argv != 2) then
 	/bin/echo "wcs_fit <input FITS filename> <output FITS filename>"
@@ -250,10 +250,11 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 if ( $N_STARS > $MAX_SEx_STARS ) then
     set SKY_RMS = `${MYBIN}iterstat 5 $inpfile | ${awk_bin} -F = 'NR==4 {print $2}' | ${awk_bin} '{print $1}'`
     set SEx_THRESH = `/bin/echo "$SKY_RMS 5 * p" | /usr/bin/dc`
-    /bin/echo "${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile"
+    /bin/echo "${now_date_string} wcs_fit : ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile"
     ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile
     set N_STARS = `${awk_bin} '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat| /usr/bin/wc -l | ${awk_bin} '{print $1}'`
-    /bin/echo "wcs_fit : Number of sources extracted by SEx at $SEx_THRESH=$SEx_THRESH (5 iterstat sigma) : $N_STARS"
+    set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
+    /bin/echo "${now_date_string} wcs_fit : Number of sources extracted by SEx at $SEx_THRESH=$SEx_THRESH (5 iterstat sigma) : $N_STARS"
   endif
 
 if ( $N_STARS < $MIN_N_STARS ) then
@@ -340,15 +341,22 @@ set SEEING_PIX = `/bin/echo "3 k $SEEING $PIXSCALE / p" | /usr/bin/dc`
 # Then reformat the data  -> *.cat which will get used in the WCS
 #
 
+set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 # Sort by magnitude to tmp1
-/bin/sort -n +$MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1
+if ( "${os_name}" == "SunOS" ) then
+    /bin/echo "${now_date_string} wcs_fit : Sort by magnitude : /bin/sort -n +$MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1"
+    /bin/sort -n +$MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1
+else if ( "${os_name}" == "Linux" ) then
+    /bin/echo "${now_date_string} wcs_fit : Sort by magnitude : /bin/sort -n -k $MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1"
+    /bin/sort -n -k $MAG_SORT_FIELD ${TMP_DIR}/${inpfile:r:t}_image.cat > ${TMP_DIR}/tmp1
+endif
 # Keep only those with FWHM < twice the actual seeing, but always keep any sources < 3" whatever
 # These numbers need to be intergers for the following comparator, hence the "1 + 0 k 1 /" in the dc script
 # setenv is used instead of set because it allows us to use ENVIRON in the following awk
 setenv FWHM_IMAGE_LIMIT `/bin/echo "2.5 $SEEING_PIX * 1 + 0 k 1 / p" | /usr/bin/dc`
 set THREE_ARCSEC_PIX = `/bin/echo "0 k 3 $PIXSCALE / 1 + p" | /usr/bin/dc`
 if ( $FWHM_IMAGE_LIMIT < $THREE_ARCSEC_PIX ) setenv FWHM_IMAGE_LIMIT $THREE_ARCSEC_PIX
-/bin/echo "wcs_fit : FWHM_IMAGE_LIMIT = $FWHM_IMAGE_LIMIT"
+/bin/echo "${now_date_string} wcs_fit : FWHM_IMAGE_LIMIT = $FWHM_IMAGE_LIMIT"
 # Can't get this next line to work under Solaris
 #${awk_bin} '( ( $ENVIRON["SEx_FLAG"] == 0 )  && ( ! /^#/ ) && ( $ENVIRON["FWHM_IMAGE"] > 1 ) && ( $ENVIRON["FWHM_IMAGE"] < ENVIRON["FWHM_IMAGE_LIMIT"] ) )' ${TMP_DIR}/tmp1 > ${TMP_DIR}/tmp2
 # Instead, write a temporary awk file to run
@@ -801,6 +809,10 @@ set now_date_string = `/bin/date +"%Y-%m-%dT%H:%M:%S %Z"`
 exit 0
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.8  2009/03/19 11:56:41  cjm
+# Removed PIXEL_SCALE sex parameter  -this made no difference.
+# Added code to delete CDELT1/CDELT2/CRPIX1/CRPIX2 from FITS header before calling sex.
+#
 # Revision 1.7  2009/03/18 10:00:44  cjm
 # Fixed sextractor comment.
 # Added -PIXEL_SCALE 1 to sex command line, to counteract L1 DpRt adding 0 CDELT values,
