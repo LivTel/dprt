@@ -1,5 +1,5 @@
 #!/bin/csh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit_tmp_tidy_cron,v 1.2 2007-10-12 10:57:06 cjm Exp $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit_tmp_tidy_cron,v 1.3 2010-02-09 17:15:10 cjm Exp $
 # wcs_fit_tmp_tidy_cron
 # Removes wcs_fit tmp files and data products.
 set tmp_dir = /icc/tmp
@@ -40,8 +40,35 @@ foreach fitsfile ( ${tmp_dir}/*_2.fits )
 	set file_age_days = `echo "(${time_now_secs}-${file_age_secs})/86400." | /usr/bin/bc`
 	if( ${file_age_days} > ${l2_fits_age_days} ) then
 		echo "${time_now_txt} : ${fitsfile} is ${file_age_days} days old, try to delete."
-		echo "Uncomment /bin/rm -f ${fitsfile} to really delete."
-#		/bin/rm -f ${fitsfile}
+		/bin/rm -f ${fitsfile}
+	else
+		echo "${time_now_txt} : ${fitsfile} is ${file_age_days} days old."
+	endif
+end
+#
+# wcs '.fits.bak' files
+#
+foreach fitsfile ( ${tmp_dir}/*.fits.bak )
+	echo "${time_now_txt} : Checking whether file ${fitsfile} is older than ${l2_fits_age_days} old."
+	set file_age_secs = `${stat_bin} -c "%Y" $fitsfile`
+	set file_age_days = `echo "(${time_now_secs}-${file_age_secs})/86400." | /usr/bin/bc`
+	if( ${file_age_days} > ${l2_fits_age_days} ) then
+		echo "${time_now_txt} : ${fitsfile} is ${file_age_days} days old, try to delete."
+		/bin/rm -f ${fitsfile}
+	else
+		echo "${time_now_txt} : ${fitsfile} is ${file_age_days} days old."
+	endif
+end
+#
+# wcs '.fits.wcs' files
+#
+foreach fitsfile ( ${tmp_dir}/*.fits.wcs )
+	echo "${time_now_txt} : Checking whether file ${fitsfile} is older than ${l2_fits_age_days} old."
+	set file_age_secs = `${stat_bin} -c "%Y" $fitsfile`
+	set file_age_days = `echo "(${time_now_secs}-${file_age_secs})/86400." | /usr/bin/bc`
+	if( ${file_age_days} > ${l2_fits_age_days} ) then
+		echo "${time_now_txt} : ${fitsfile} is ${file_age_days} days old, try to delete."
+		/bin/rm -f ${fitsfile}
 	else
 		echo "${time_now_txt} : ${fitsfile} is ${file_age_days} days old."
 	endif
@@ -55,8 +82,7 @@ foreach cat_file ( ${wcs_tmp_dir}/*.starb ${wcs_tmp_dir}/*.usnob )
 	set file_age_days = `echo "(${time_now_secs}-${file_age_secs})/86400." | /usr/bin/bc`
 	if( ${file_age_days} > ${catalogue_age_days} ) then
 		echo "${time_now_txt} : ${cat_file} is ${file_age_days} days old, try to delete."
-		echo "Uncomment /bin/rm -f ${cat_file} to really delete."
-#		/bin/rm -f ${cat_file}
+		/bin/rm -f ${cat_file}
 	else
 		echo "${time_now_txt} : ${cat_file} is ${file_age_days} days old."
 	endif
@@ -70,8 +96,7 @@ foreach wcs_error_file ( ${wcs_tmp_dir}/*.errwcsfit ${wcs_tmp_dir}/*.wcsfit ${wc
 	set file_age_days = `echo "(${time_now_secs}-${file_age_secs})/86400." | /usr/bin/bc`
 	if( ${file_age_days} > ${wcs_error_age_days} ) then
 		echo "${time_now_txt} : ${wcs_error_file} is ${file_age_days} days old, try to delete."
-		echo "Uncomment /bin/rm -f ${wcs_error_file} to really delete."
-#		/bin/rm -f ${wcs_error_file}
+		/bin/rm -f ${wcs_error_file}
 	else
 		echo "${time_now_txt} : ${wcs_error_file} is ${file_age_days} days old."
 	endif
