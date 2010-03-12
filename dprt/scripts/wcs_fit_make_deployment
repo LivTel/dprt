@@ -1,6 +1,6 @@
 #!/bin/csh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit_make_deployment,v 1.2 2009-03-13 15:33:51 cjm Exp $
-# Version: $Revision: 1.2 $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/wcs_fit_make_deployment,v 1.3 2010-03-12 14:49:07 cjm Exp $
+# Version: $Revision: 1.3 $
 # By $Author: cjm $
 # Make a deployment of wcs_fit and associated executables, for the specified HOSTTYPE.
 # Usage:
@@ -85,7 +85,7 @@ foreach dir ( ${dir_list} )
 # check file is an executable
 # "ELF 32-bit MSB executable" for Solaris only!
 # "ELF 32-bit LSB executable" for Linux only!
-		file ${file} | ${grep_binname} -q "ELF 32-bit [LM]SB executable"
+		file -L ${file} | ${grep_binname} -q "ELF 32-bit [LM]SB executable"
 		set grep_status = $status
 		if ( ${grep_status} == 0 ) then
 			echo "Deploying binary ${file}."
@@ -119,7 +119,7 @@ echo "${binary_count} C binary programs in ${dir_count} directories copied."
 # Scripts
 #
 echo "Copying scripts..."
-set file_list = "dprt/wcs_fit/${HOSTTYPE}/blank_wcs_fit dprt/wcs_fit/${HOSTTYPE}/get_local_usnob.csh dprt/wcs_fit/${HOSTTYPE}/rd.awk dprt/wcs_fit/${HOSTTYPE}/tostartab_hhmmss.sh dprt/wcs_fit/${HOSTTYPE}/wcs_fit dprt/wcs_fit/${HOSTTYPE}/remove_wcs.csh"
+set file_list = "dprt/wcs_fit/${HOSTTYPE}/blank_wcs_fit dprt/wcs_fit/${HOSTTYPE}/get_local_usnob.csh dprt/wcs_fit/${HOSTTYPE}/rd.awk dprt/wcs_fit/${HOSTTYPE}/tostartab_hhmmss.sh dprt/wcs_fit/${HOSTTYPE}/wcs_fit dprt/wcs_fit/${HOSTTYPE}/remove_wcs.csh dprt/wcs_fit/${HOSTTYPE}/cds_extract_mags.awk dprt/wcs_fit/${HOSTTYPE}/cds_extract_mags_2.awk dprt/wcs_fit/${HOSTTYPE}/convert_cds_starb_1.awk"
 set file_count = 0
 cd ${dev_dir}
 foreach file ( ${file_list} )
@@ -137,7 +137,7 @@ echo "${file_count} scripts copied."
 # Configs
 #
 echo "Copying configuration files..."
-set file_list = "dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.sex.${machine_name} dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.param"
+set file_list = "dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.sex dprt/wcs_fit/${HOSTTYPE}/astrom_pipe.param"
 set file_count = 0
 cd ${dev_dir}
 foreach file ( ${file_list} )
@@ -177,6 +177,9 @@ echo "Deployment ready."
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2009/03/13 15:33:51  cjm
+# Attempt to make astrom_pipe.sex per-machine.
+#
 # Revision 1.1  2008/12/01 10:41:37  cjm
 # Initial revision
 #
