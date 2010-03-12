@@ -1,6 +1,6 @@
 #!/bin/csh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/dprt_make_deployment,v 1.1 2009-03-13 15:33:56 cjm Exp $
-# Version: $Revision: 1.1 $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/dprt_make_deployment,v 1.2 2010-03-12 14:49:04 cjm Exp $
+# Version: $Revision: 1.2 $
 # By $Author: cjm $
 # Make a deployment tar file.
 # This contains:
@@ -308,7 +308,7 @@ echo "${file_count} scripts copied to bin dir."
 # Scripts to wcs_fit path
 #
 echo "Copying wcs_fit scripts..."
-set file_list = "dprt/wcs_fit/${HOSTTYPE}/blank_wcs_fit dprt/wcs_fit/${HOSTTYPE}/get_local_usnob.csh dprt/wcs_fit/${HOSTTYPE}/rd.awk dprt/wcs_fit/${HOSTTYPE}/tostartab_hhmmss.sh dprt/wcs_fit/${HOSTTYPE}/wcs_fit dprt/wcs_fit/${HOSTTYPE}/remove_wcs.csh"
+set file_list = "dprt/wcs_fit/${HOSTTYPE}/blank_wcs_fit dprt/wcs_fit/${HOSTTYPE}/get_local_usnob.csh dprt/wcs_fit/${HOSTTYPE}/rd.awk dprt/wcs_fit/${HOSTTYPE}/tostartab_hhmmss.sh dprt/wcs_fit/${HOSTTYPE}/wcs_fit dprt/wcs_fit/${HOSTTYPE}/remove_wcs.csh dprt/wcs_fit/${HOSTTYPE}/cds_extract_mags.awk dprt/wcs_fit/${HOSTTYPE}/cds_extract_mags_2.awk dprt/wcs_fit/${HOSTTYPE}/convert_cds_starb_1.awk"
 set file_count = 0
 cd ${dev_dir}
 foreach file ( ${file_list} )
@@ -342,7 +342,7 @@ end
 echo "${file_count} configs copied to bin dir."
 # to wcs_fit dir
 echo "Copying wcs_fit configuration files..."
-set file_list = "astrom_pipe.sex.${machine_name} astrom_pipe.param"
+set file_list = "astrom_pipe.sex astrom_pipe.param"
 set file_count = 0
 cd ${dev_dir}
 foreach file ( ${file_list} )
@@ -393,4 +393,7 @@ echo "Download ${deployment_tar}.gz ${install_script} dprt_cshrc dprt_cshrc_edit
 echo "Deployment ready."
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2009/03/13 15:33:56  cjm
+# Initial revision
+#
 #
