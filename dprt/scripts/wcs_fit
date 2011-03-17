@@ -28,11 +28,6 @@ alias now_date_string "/bin/date +'%Y-%m-%dT%H:%M:%S %Z'"
 setenv USNOB_LOCAL_DIR /mnt/catalogues/usnob1/usnob1
 setenv TWOMASS_LOCAL_DIR /mnt/catalogues/2mass
 
-# This is just the bin name so you will need to be sure these are on the 
-# path, either on the default environment $PATH or else $MYBIN
-set FITS_AKVC = /usr/local/bin/fits_add_keyword_value_comment_static
-set FITS_MODIFY_COMMENT = /usr/local/bin/fits_modify_comment_static
-set ITERSTAT = /usr/local/bin/iterstat
 
 #
 # Parse command line options
@@ -105,9 +100,14 @@ endif
 #
 set MAX_SEx_STARS	= 500	# If Sextractor returns more than this, we think there is a problem and incease detection sigma from the default
 set MAX_N_STARS 	= 20    # Max number of stars to select from the CCD image. The brightest N will be used in the wcs fit
+# THR_FRACTION = 50% is an incredibly successful threshold in tests despite sounding completely arbitrary. If you plot DEL_POINT vs MATCHFRAC
+# there is a very dramatic discontinuity at 50%
 set THR_FRACTION 	= 50	# (%) Per centage of catalogue stars which must bet matched in image for good fit
 set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth attempting a fit
-set MAX_ROT_CHANGE 	= 5	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
+# Tests show that so long as the ROT configs in the RCS are correct, any WCS rotations > 2 are very unlikely to be correct.
+# Conversely, rotations < 2 are not a good indication that it is correct. I.e, this only ever excludes fits, never includes them
+# Maybe use more than 2 to allow for RCS config imperfections.
+set MAX_ROT_CHANGE 	= 3	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
 set MAX_POINT_CHANGE 	= 120	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
@@ -136,6 +136,14 @@ else
 	/bin/echo "`now_date_string` : $procname : Failed to find a binary dir."
 	exit 26
 endif
+setenv PATH ${PATH}:${MYBIN}
+
+# This is just the bin name so you will need to be sure these are on the 
+# path, either on the default environment $PATH or else $MYBIN
+set FITS_AKVC = ${MYBIN}/fits_add_keyword_value_comment_static
+set FITS_MODIFY_COMMENT = ${MYBIN}/fits_modify_comment_static
+set ITERSTAT = ${MYBIN}/iterstat
+
 
 #
 # Set up paths
@@ -276,6 +284,7 @@ switch ( $INSTRUMENT )
           set DETECT_MINAREA = 9
 	endif
 	set CAT_SEARCH_RADIUS = 4
+	set NEEDS_FLIP = ""
 	breaksw
     case 'RISE' :
         # Use _ instead of minus sign -
@@ -291,6 +300,7 @@ switch ( $INSTRUMENT )
           set DETECT_MINAREA = 9
         endif
         set CAT_SEARCH_RADIUS = 8
+	set NEEDS_FLIP = ""
         breaksw
     case 'SupIRCam' :
 	if ($DEBUG) /bin/echo `now_date_string` THIS IS SUPIRCAM
@@ -302,6 +312,28 @@ switch ( $INSTRUMENT )
         set fixpix_param = "172 116 177 122 79 135 86 142 219 179 222 182"
 	set DETECT_MINAREA = 5
 	set CAT_SEARCH_RADIUS = 2
+	set NEEDS_FLIP = ""
+	breaksw
+    case 'Ringo2' :
+	# Use _ instead of minus sign -
+        # APERTUREX,APERTUREY not curerntly being used. They are used to convert ROTCENT to POICENT,
+        # but we now actually have POICENT in the headers, so they are no longer required.
+	set APERTUREX = 0
+	set APERTUREY = 0
+	if ( $BINNING == 2 ) then
+	  set do_fixpix = 0
+	  set fixpix_param = ""
+	  set DETECT_MINAREA = 9
+	else if ( $BINNING == 1 ) then
+	  set do_fixpix = 0
+	  set fixpix_param = ""
+	  set DETECT_MINAREA = 18
+        else
+          if ( $DEBUG ) /bin/echo "`now_date_string` : $procname : $inpfile : Unsupported RINGO binning."
+          set DETECT_MINAREA = 9
+	endif
+	set CAT_SEARCH_RADIUS = 4
+	set NEEDS_FLIP = ""		# Tells imwcs to flip the image left-right
 	breaksw
     default :
 	echo "`now_date_string` : $procname : $inpfile : Instrument not recognized. "
@@ -523,6 +555,7 @@ if ( "$ESTSEE" == "99.9000000" ) set ESTSEE = 0
 
 set L1SEEING = `${MYBIN}gethead -u $inpfile L1SEEING `
 if ( "$L1SEEING" == "___" ) set L1SEEING = 0
+if ( "$L1SEEING" ==  "999." ) set L1SEEING = 0
 set L1SEEING  = `/bin/echo "3 k $L1SEEING $PIXSCALE * p" | ${dc_bin} `
 
 # If both values are missing, arbitrarily use 2arcsec
@@ -535,6 +568,7 @@ else if (($ESTSEE != 0) && ($L1SEEING != 0)) then
   set SEEING = `echo "1k $ESTSEE $L1SEEING + 2 / p " | ${dc_bin} `
   if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to average of ESTSEE and L1SEEING ($ESTSEE, $L1SEEING) "
 else
+  # Get here is one of them is zero, sothe sum of the two equals whichever is non-zero
   set SEEING = `echo "1k $ESTSEE $L1SEEING + p " | ${dc_bin} `
   if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to one of ESTSEE($ESTSEE) or L1SEEING($L1SEEING) "
 endif
@@ -603,7 +637,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}"
   ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}
   # Ensure the contents of MAG_BEST_FIELD field are < 99 (${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3)
-  ${awk_bin} '( $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} > ${TMP_DIR}/tmp3.${unique}
+  ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} > ${TMP_DIR}/tmp3.${unique}
   # Keep only $MAX_N_STARS best
   /usr/bin/head -$MAX_N_STARS ${TMP_DIR}/tmp3.${unique} > ${TMP_DIR}/tmp4.${unique}
   # Reformat the file to what is required by imwcs
@@ -613,7 +647,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
 
   if ( $N_STARS_TAKEN < 10 ) then
     # Fewer than 10 "perfect" stars, so we will try the less strict SExtractor criteria
-    # Repeat all that using teh less strict SExtractor criteria so that we keep stars which have been deblended
+    # Repeat all that using the less strict SExtractor criteria so that we keep stars which have been deblended
     if (-e ${TMP_DIR}/fwhm_limit.awk.${unique} ) /bin/rm -f ${TMP_DIR}/fwhm_limit.awk.${unique}
     /bin/touch ${TMP_DIR}/fwhm_limit.awk.${unique}
     /bin/chmod +x ${TMP_DIR}/fwhm_limit.awk.${unique}
@@ -624,14 +658,14 @@ if ( $NOMINAL_NEEDED == 0 ) then
     if ($DEBUG) /bin/cat ${TMP_DIR}/fwhm_limit.awk.${unique}
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}"
     ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} >! ${TMP_DIR}/tmp2.${unique}
-    ${awk_bin} '( $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
+    ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
     /usr/bin/head -$MAX_N_STARS ${TMP_DIR}/tmp3.${unique} >! ${TMP_DIR}/tmp4.${unique}
     ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4.${unique} >! ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict
   endif
 
   if ( $N_STARS_TAKEN < 10 ) then
-    # Fewer than 10 "perfect" stars, so we will try the less strict SExtractor criteria
-    # Repeat all that using teh less strict SExtractor criteria so that we keep stars which have been deblended
+    # Fewer than 10 "OK" stars, so we will try the less strict SExtractor criteria
+    # Repeat all that using the less strict SExtractor criteria so that we keep stars which have been deblended
     if (-e ${TMP_DIR}/fwhm_limit.awk.${unique} ) /bin/rm -f ${TMP_DIR}/fwhm_limit.awk.${unique}
     /bin/touch ${TMP_DIR}/fwhm_limit.awk.${unique}
     /bin/chmod +x ${TMP_DIR}/fwhm_limit.awk.${unique}
@@ -642,7 +676,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
     if ($DEBUG) /bin/cat ${TMP_DIR}/fwhm_limit.awk.${unique}
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}"
     ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} >! ${TMP_DIR}/tmp2.${unique}
-    ${awk_bin} '( $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
+    ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
     /usr/bin/head -$MAX_N_STARS ${TMP_DIR}/tmp3.${unique} >! ${TMP_DIR}/tmp4.${unique}
     ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4.${unique} >! ${TMP_DIR}/${inpfile:r:t}_wcs.cat_non_stellar
   endif
@@ -673,6 +707,21 @@ if ( "$POINT_CENTY" == "___" ) @ POINT_CENTY = `${MYBIN}gethead $inpfile NAXIS2`
 ##
 set RA = `${MYBIN}gethead $inpfile RA`
 set DE = `${MYBIN}gethead $inpfile DEC`
+set SYS = `${MYBIN}gethead $inpfile RADECSYS`
+# Trap and convert FK4 coordinates. If RADECSYS is missing or anything other than "FK4"
+# then we assume FK5
+if ("$SYS" == "FK4") then
+  #echo $RA $DE B1950
+  set tempstring = `${MYBIN}/skycoor -j $RA $DE B1950`
+  # Need some exception handling?
+  set RA = `echo $tempstring | ${awk_bin} '{print $1}'` 
+  set DE = `echo $tempstring | ${awk_bin} '{print $2}'` 
+  $FITS_AKVC $inpfile RA STRING "$RA" "" "Converted from FK4 in raw data"
+  $FITS_AKVC $inpfile DEC STRING "$DE" "" "Converted from FK4 in raw data"
+  $FITS_AKVC $inpfile RADECSYS STRING "FK5" "" "Converted from FK4 in raw data"
+  $FITS_AKVC $inpfile EQUINOX DOUBLE 2000 "" "Converted from 1950 in raw data"
+  #echo $RA $DE J2000
+endif
 # $RA (HH:MM:SS) -> $INPUT_RA (in degrees)
 # This was written on linux but does not work on the solaris dc which is missing teh r operator
 # Retained here for reference since it is so much more concise than the solaris version.
@@ -803,6 +852,7 @@ if ( $REFCATNAME == LESS_STRICT_SEXTRACTOR ) then
     set NOMINAL_NEEDED = 2
   endif
 
+  # Not really a failure. THIS_CAT_FAILED is a flag which means "try the next"
   set THIS_CAT_FAILED = 1
 
 endif
@@ -833,6 +883,8 @@ if ( $REFCATNAME == NON_STELLAR_SEXTRACTOR ) then
     # Reset REFCAT and we start again
     set REFCAT = 1
     if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : I have reset REFCAT to 1. Here we go again....."
+  else 
+    if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : There is no _wcs.cat_non_stellar, so no need to repeat fits."
   endif
   
   if ( $last_chance ) then
@@ -1300,6 +1352,20 @@ $FITS_AKVC $inpfile CDELT1 DOUBLE -$PIXSCALE_DEGREES    ""      "First guess nom
 $FITS_AKVC $inpfile CROTA1 DOUBLE $INPUT_ROT            ""      "First guess nominal WCS"
 $FITS_AKVC $inpfile CROTA2 DOUBLE $INPUT_ROT            ""      "First guess nominal WCS"
 
+# Given that approximate nominal WCS, we can now prune the reference catalogue list so as to only include objects
+# on the camera FoV. To this point, we deliberately select a large patch of the reference catalogue
+# to allow for field rotation or pointing errors.
+#awk '(NR>8)' $STARBFILE >! ${TMP_DIR}/tmp1.$unique
+#sky2xy $inpfile @${TMP_DIR}/tmp1.$unique >! ${TMP_DIR}/tmp2.$unique
+#grep -v "off image" ${TMP_DIR}/tmp2.$unique | sed 's/ ->.*//' | sed 's/ /\t/g' >! ${TMP_DIR}/tmp3.$unique
+#awk '(NR<=8)' $STARBFILE >! ${TMP_DIR}/tmp4.$unique
+#cat ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp3.$unique >! ${STARBFILE}.fov
+#echo `now_date_string` : $procname : $inpfile : Stars in $STARBFILE = `awk '(NR>8)' $STARBFILE | wc -l `
+#echo `now_date_string` : $procname : $inpfile : Stars in ${STARBFILE}.fov = `awk '(NR>8)' ${STARBFILE}.fov | wc -l `
+#rm -f ${TMP_DIR}/tmp[1234].$unique 
+cp ${STARBFILE} ${STARBFILE}.fov
+
+
 ########### ASTROMETRIC FIT: begin ###########
 if ( ${NOMINAL_NEEDED} != 0 ) then
     /bin/echo "`now_date_string` : $procname : $inpfile : Some critical error has occured. Not running the WCS fit. Only a nominal WCS will be available."
@@ -1342,8 +1408,8 @@ else
   if (-e ${TMP_DIR}/${inpfile:r:t}_temp.fits) /bin/rm -f ${TMP_DIR}/${inpfile:r:t}_temp.fits
   if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Performing Astrometric Fit..."
 
-  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
-  (                                                         ${MYBIN}imwcs -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h 75 -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
+  (                                                         ${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h 75 -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
 #  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (/mnt/newarchive1/old-root/usr/local/bin/wcs/imwcs-3.6.4 -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
 #  (                                                         /mnt/newarchive1/old-root/usr/local/bin/wcs/imwcs-3.6.4 -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
 
@@ -1377,6 +1443,18 @@ endif
 # Define output files name
 set fittedfile = ${inpfile}.wcs
 ########### Sanity checks on the results of the Astrometric Fit ###########
+
+# First initialize all the sanity check parameters
+set MATCHFRAC = 0
+set NMATCH = 0
+set SCALECHANGE_1 = 999
+set SCALECHANGE_2 = 999
+set FLT_SCALECHANGE_1 = 999
+set FLT_SCALECHANGE_2 = 999
+set resid_test = 999
+set fit_residual = 999
+set DEL_POINT = 999
+set TEST_ROT = 999
 
 
 # Check the existence of the output file ${TMP_DIR}/${inpfile:r:t}_temp.fits
@@ -1431,11 +1509,11 @@ else
     set MATCHFRAC = `/bin/echo "$NMATCH * 100 / $N_STARS_TAKEN" | /usr/bin/bc`
     if ($DEBUG) /bin/echo "`now_date_string` $procname : $inpfile : Matched fraction = $MATCHFRAC ( $NMATCH of $N_STARS_TAKEN ) "
     #Conditions to be satisfied for rejecting the fit
-    if(($MATCHFRAC < ${THR_FRACTION}) || ($NMATCH < $MIN_N_STARS)) then
-        /bin/echo "`now_date_string` : $procname : $inpfile : Cat $REFCATNAME ($REFCAT). Less than ${THR_FRACTION}% of reference stars matched or less than ${MIN_N_STARS}"
-        set ASFIT_STATUS = 1
-        set THIS_CAT_FAILED = 1
-    endif
+    #XXX if(($MATCHFRAC < ${THR_FRACTION}) || ($NMATCH < $MIN_N_STARS)) then
+    #XXX     /bin/echo "`now_date_string` : $procname : $inpfile : Cat $REFCATNAME ($REFCAT). Less than ${THR_FRACTION}% of reference stars matched or less than ${MIN_N_STARS}"
+    #XXX     set ASFIT_STATUS = 1
+    #XXX     set THIS_CAT_FAILED = 1
+    #XXX endif
   endif
 
 # Make sure PIXSCALE is defined in the fitted image
@@ -1466,12 +1544,18 @@ else
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : CD2_1   CD2_2:  $CD2_1  $CD2_2"
     set SCALECHANGE_1 = `/bin/echo "(sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| /usr/bin/bc -l| /bin/sed 's/\..*//g'`
     set SCALECHANGE_2 = `/bin/echo "(sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| /usr/bin/bc -l| /bin/sed 's/\..*//g'`
+    if ("$SCALECHANGE_1" == "") set SCALECHANGE_1 = 0
+    if ("$SCALECHANGE_2" == "") set SCALECHANGE_2 = 0
+    if ("$SCALECHANGE_1" == "-") set SCALECHANGE_1 = 0
+    if ("$SCALECHANGE_2" == "-") set SCALECHANGE_2 = 0
     if ($DEBUG) /bin/echo "`now_date_string` $procname : $inpfile : Scalechange 1: $SCALECHANGE_1 (0.1%)  Scalechange 2: $SCALECHANGE_2 (0.1%)"
-    if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
-        /bin/echo "`now_date_string` : $procname : $inpfile : CD matrix suggests plate scale changed by more than 1.0%. Bad."
-	set ASFIT_STATUS = 1
-        set THIS_CAT_FAILED = 1
-    endif
+    set FLT_SCALECHANGE_1 = `/bin/echo "scale=3; (sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 100"| /usr/bin/bc -l`
+    set FLT_SCALECHANGE_2 = `/bin/echo "scale=3; (sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 100"| /usr/bin/bc -l`
+    #XXX if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
+    #XXX     /bin/echo "`now_date_string` : $procname : $inpfile : CD matrix suggests plate scale changed by more than 1.0%. Bad."
+    #XXX   set ASFIT_STATUS = 1
+    #XXX   set THIS_CAT_FAILED = 1
+    #XXX endif
   endif
 
   # We are now happy this fit looks sane so 
@@ -1491,10 +1575,10 @@ if ( $WCS_WAS_RUN ) then
   $FITS_AKVC ${fittedfile} WCSRDRES STRING "$RDRESID" "arcsec" "WCS fitting residuals, mean and sigma"
   set fit_residual=`/bin/echo $RDRESID | /usr/bin/cut -d"/" -f1`
   set resid_test=`/bin/echo "(${fit_residual} > ${max_fit_residual})" | /usr/bin/bc`
-  if ( ${resid_test} == 1 ) then
-    /bin/echo "`now_date_string` : $procname : $inpfile : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
-    set THIS_CAT_FAILED = 1
-  endif
+  #XXX if ( ${resid_test} == 1 ) then
+  #XXX   /bin/echo "`now_date_string` : $procname : $inpfile : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
+  #XXX   set THIS_CAT_FAILED = 1
+  #XXX endif
   if ($DEBUG) /bin/echo "`now_date_string` $procname : $inpfile : Input RA,Dec, Rot = $INPUT_RA $INPUT_DEC $INPUT_ROT "
   set OUTPUT_RA  = `${MYBIN}gethead ${fittedfile} CRVAL1`
   set OUTPUT_DEC  = `${MYBIN}gethead ${fittedfile} CRVAL2`
@@ -1526,10 +1610,10 @@ if ( $WCS_WAS_RUN ) then
   $FITS_AKVC ${fittedfile} WCSDELPO DOUBLE $DEL_POINT "arcsec"  "Shift of fitted WCS w.r.t. nominal"
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Pointing change : $DEL_POINT arcsec"
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Rot change:    $DEL_ROT deg"
-  if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
-    /bin/echo "`now_date_string` : $procname : $inpfile : Pointing change too large ($DEL_POINT >= $MAX_POINT_CHANGE)."
-    set THIS_CAT_FAILED  = 1
-  endif
+  #XXX if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
+  #XXX   /bin/echo "`now_date_string` : $procname : $inpfile : Pointing change too large ($DEL_POINT >= $MAX_POINT_CHANGE)."
+  #XXX   set THIS_CAT_FAILED  = 1
+  #XXX endif
 
   # Convert DEL_ROT to an abs(integer)
   # This is convoluted! Strip the minus sign. Convert to integer. Convert to range -180 -> +180. Strip the minus sign. Test against limit
@@ -1538,10 +1622,10 @@ if ( $WCS_WAS_RUN ) then
   set TEST_ROT = `/bin/echo "0 k $TEST_ROT 1 / p " | ${dc_bin} `  
   if ( $TEST_ROT > 180 ) @ TEST_ROT -= 360 
   set TEST_ROT = `/bin/echo $TEST_ROT | /bin/sed 's/-//'`
-  if ( $TEST_ROT >= $MAX_ROT_CHANGE ) then
-    /bin/echo "`now_date_string` : $procname : $inpfile : Rotator change too large ($TEST_ROT >= $MAX_ROT_CHANGE)."
-    set THIS_CAT_FAILED  = 1
-  endif
+  #XXX if ( $TEST_ROT >= $MAX_ROT_CHANGE ) then
+  #XXX   /bin/echo "`now_date_string` : $procname : $inpfile : Rotator change too large ($TEST_ROT >= $MAX_ROT_CHANGE)."
+  #XXX   set THIS_CAT_FAILED  = 1
+  #XXX endif
 
 
 else
@@ -1551,6 +1635,43 @@ else
   if ( $DEBUG ) /bin/echo "`now_date_string` : ${procname} : $inpfile :   Pointing change : <imwcs not run>"
   if ( $DEBUG ) /bin/echo "`now_date_string` : ${procname} : $inpfile :   Rot change:   <imwcs not run> "
 endif
+
+
+# 
+# Now apply all the tests together in one place to decide if we like this fit or not
+#
+if(($MATCHFRAC < ${THR_FRACTION}) || ($NMATCH < $MIN_N_STARS)) then
+/bin/echo "`now_date_string` : $procname : $inpfile : Cat $REFCATNAME ($REFCAT). Less than ${THR_FRACTION}% of reference stars matched or less than ${MIN_N_STARS}"
+  set ASFIT_STATUS = 1
+  set THIS_CAT_FAILED = 1
+endif
+
+if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
+  /bin/echo "`now_date_string` : $procname : $inpfile : CD matrix suggests plate scale changed by more than 1.0%. Bad."
+  set ASFIT_STATUS = 1
+  set THIS_CAT_FAILED = 1
+endif
+
+if ( ${resid_test} == 1 ) then
+  # or use fit_residual
+  /bin/echo "`now_date_string` : $procname : $inpfile : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
+  set THIS_CAT_FAILED = 1
+endif
+
+if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
+  /bin/echo "`now_date_string` : $procname : $inpfile : Pointing change too large ($DEL_POINT >= $MAX_POINT_CHANGE)."
+  set THIS_CAT_FAILED  = 1
+endif
+
+if ( $TEST_ROT >= $MAX_ROT_CHANGE ) then
+  /bin/echo "`now_date_string` : $procname : $inpfile : Rotator change too large ($TEST_ROT >= $MAX_ROT_CHANGE)."
+  set THIS_CAT_FAILED  = 1
+endif
+
+#if ( ($SCALECHANGE_1 != 999) && ($resid_test != 999) && ($DEL_POINT != 999) )  then
+  echo $inpfile $SEEING $REFCAT $MATCHFRAC $NMATCH $FLT_SCALECHANGE_1 $FLT_SCALECHANGE_2 ${resid_test} $fit_residual $DEL_POINT $TEST_ROT $THIS_CAT_FAILED  >> ~/wcs_test_params
+#endif
+
 
 
 #
@@ -1582,13 +1703,12 @@ endif
 #
 
 
-
 if ( ${NOMINAL_NEEDED} == 0 ) then
   if ($DEBUG) /bin/echo "`now_date_string` ${procname} :     Create new file with WCS: $output_fits_filename"
   set final_file = ${inpfile}.wcs2
   cp -f ${inpfile}.bak $final_file
-  $FITS_MODIFY_COMMENT ${final_file} RADECSYS '[FK4, FK5] Fundamental coord system'
-  $FITS_MODIFY_COMMENT ${final_file} EQUINOX 'Equinox of the coord system'
+  #$FITS_MODIFY_COMMENT ${final_file} RADECSYS '[FK4, FK5] Fundamental coord system'
+  #$FITS_MODIFY_COMMENT ${final_file} EQUINOX 'Equinox of the coord system'
   $FITS_AKVC $final_file PIXSCALE DOUBLE `${MYBIN}gethead $fittedfile PIXSCALE` "arcsec/pixel"  "Nominal pixel scale on sky"
   $FITS_AKVC $final_file   CTYPE1 STRING "`${MYBIN}gethead $fittedfile CTYPE1`" ""              "WCS projection"
   $FITS_AKVC $final_file   CTYPE2 STRING "`${MYBIN}gethead $fittedfile CTYPE2`" ""              "WCS projection"
@@ -1598,9 +1718,17 @@ if ( ${NOMINAL_NEEDED} == 0 ) then
   $FITS_AKVC $final_file   CRVAL2 DOUBLE `${MYBIN}gethead $fittedfile CRVAL2`   "degrees"       "World coordinate at the ref pix"
   $FITS_AKVC $final_file       RA STRING "`${MYBIN}gethead $fittedfile RA`"     ""              "World coordinate at the reference pixel"
   $FITS_AKVC $final_file      DEC STRING "`${MYBIN}gethead $fittedfile DEC`"    ""              "World coordinate at the reference pixel"
-  $FITS_AKVC $final_file      WRA DOUBLE `${MYBIN}gethead $fittedfile WRA`      ""              "Original RA value from TCS before WCS fit"
-  $FITS_AKVC $final_file     WDEC DOUBLE `${MYBIN}gethead $fittedfile WDEC`     ""              "Original DEC value from TCS before WCS fit"
-  $FITS_AKVC $final_file  WROTSKY DOUBLE `${MYBIN}gethead $fittedfile ROTSKYPA` ""              "Original sky PA value from TCS before WCS fit"
+  if ("$SYS" == "FK4") then
+    $FITS_AKVC $final_file RADECSYS STRING "FK5"     				"FK4, FK5"	"Fundamental system (Raw data were FK4)"
+    $FITS_AKVC $final_file  EQUINOX DOUBLE 2000					"Year"		"Equinox of the coord system"
+  else
+    $FITS_MODIFY_COMMENT ${final_file} RADECSYS '[FK4, FK5] Fundamental coord system'
+    $FITS_MODIFY_COMMENT ${final_file} EQUINOX '[Year] Equinox of the coord system'
+  endif
+  $FITS_AKVC $final_file      WRA STRING "`${MYBIN}gethead ${inpfile}.bak RA`"		""		"Original RA value from TCS before WCS fit"
+  $FITS_AKVC $final_file     WDEC STRING "`${MYBIN}gethead ${inpfile}.bak DEC`"		""		"Original DEC value from TCS before WCS fit"
+  $FITS_AKVC $final_file WRADECSY STRING "`${MYBIN}gethead ${inpfile}.bak RADECSYS`"	"FK4,FK5"	"Original Fundamental system before WCS fit"
+  $FITS_AKVC $final_file  WROTSKY DOUBLE `${MYBIN}gethead ${inpfile}.bak ROTSKYPA`	"deg"		"Original sky PA from TCS before WCS fit"
   set ROTSKYPA = `${MYBIN}gethead $fittedfile CROTA1 | ${awk_bin} '{print -$1}'`
   $FITS_AKVC $final_file ROTSKYPA DOUBLE ${ROTSKYPA}                            "degrees"       "sky position angle"
   $FITS_AKVC $final_file  EQUINOX DOUBLE `${MYBIN}gethead $fittedfile EQUINOX`  ""              "Equinox of the coordinate system"
@@ -1639,11 +1767,15 @@ else
   /bin/echo "`now_date_string` : $procname :     Create nominal WCS in $inpfile instead "
   set final_file = ${inpfile}.wcs2
   cp -f ${inpfile}.bak $final_file
-  $FITS_MODIFY_COMMENT ${final_file} RADECSYS '[FK4, FK5] Fundamental coordinate system'
-  $FITS_MODIFY_COMMENT ${final_file} EQUINOX 'Date of the coordinate system'
-  $FITS_AKVC $final_file      WRA DOUBLE `${MYBIN}gethead $final_file RA`       ""      "Original RA value from TCS before WCS fit"
-  $FITS_AKVC $final_file     WDEC DOUBLE `${MYBIN}gethead $final_file DEC`      ""      "Original DEC value from TCS before WCS fit"
-  $FITS_AKVC $final_file  WROTSKY DOUBLE `${MYBIN}gethead $final_file ROTSKYPA` ""      "Original sky PA value from TCS before WCS fit"
+  # The nominal WCS we write is always in FK5 J2000
+  #$FITS_MODIFY_COMMENT ${final_file} RADECSYS '[FK4, FK5] Fundamental coordinate system'
+  #$FITS_MODIFY_COMMENT ${final_file} EQUINOX 'Date of the coordinate system'
+  $FITS_AKVC $final_file RADECSYS STRING "FK5"		"FK4,FK5"	"Fundamental coordinate system"
+  $FITS_AKVC $final_file  EQUINOX DOUBLE 2000 		""		"Date of the coordinate system"
+  $FITS_AKVC $final_file      WRA STRING "`${MYBIN}gethead ${inpfile}.bak RA`"		""		"Original RA value from TCS before WCS fit"
+  $FITS_AKVC $final_file     WDEC STRING "`${MYBIN}gethead ${inpfile}.bak DEC`"		""		"Original DEC value from TCS before WCS fit"
+  $FITS_AKVC $final_file WRADECSY STRING "`${MYBIN}gethead ${inpfile}.bak RADECSYS`"	"FK4,FK5"	"Original Fundamental system before WCS fit"
+  $FITS_AKVC $final_file  WROTSKY DOUBLE `${MYBIN}gethead ${inpfile}.bak ROTSKYPA`	"deg"		"Original sky PA from TCS before WCS fit"
   $FITS_AKVC $final_file   CTYPE1 STRING "RA---TAN"     ""      "Using nominal WCS from telescope"
   $FITS_AKVC $final_file   CTYPE2 STRING "DEC--TAN"     ""      "Using nominal WCS from telescope"
   $FITS_AKVC $final_file   CRVAL1 DOUBLE $INPUT_RA      ""      "Using nominal WCS from telescope"
