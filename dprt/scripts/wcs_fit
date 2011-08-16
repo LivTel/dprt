@@ -102,7 +102,7 @@ set MAX_SEx_STARS	= 500	# If Sextractor returns more than this, we think there i
 set MAX_N_STARS 	= 20    # Max number of stars to select from the CCD image. The brightest N will be used in the wcs fit
 # THR_FRACTION = 50% is an incredibly successful threshold in tests despite sounding completely arbitrary. If you plot DEL_POINT vs MATCHFRAC
 # there is a very dramatic discontinuity at 50%
-set THR_FRACTION 	= 50	# (%) Per centage of catalogue stars which must bet matched in image for good fit
+set THR_FRACTION 	= 44	# (%) Per centage of catalogue stars which must bet matched in image for good fit
 set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth attempting a fit
 # Tests show that so long as the ROT configs in the RCS are correct, any WCS rotations > 2 are very unlikely to be correct.
 # Conversely, rotations < 2 are not a good indication that it is correct. I.e, this only ever excludes fits, never includes them
@@ -404,7 +404,7 @@ endif
 ############# SExtractor #############
 if ($DEBUG) /bin/echo "`now_date_string` : $procname : Starting SEx Pipe: ${inpfile}"
 if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -catalog_name ${TMP_DIR}/${inpfile:r:t}_image.cat -PARAMETERS_NAME ${MYBIN}astrom_pipe.param -DETECT_MINAREA $DETECT_MINAREA ${inpfile}"
-${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -catalog_name ${TMP_DIR}/${inpfile:r:t}_image.cat -PARAMETERS_NAME ${MYBIN}astrom_pipe.param -DETECT_MINAREA $DETECT_MINAREA ${inpfile}
+${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -catalog_name ${TMP_DIR}/${inpfile:r:t}_image.cat -PARAMETERS_NAME ${MYBIN}astrom_pipe.param -DETECT_MINAREA $DETECT_MINAREA ${inpfile} 
 #
 # SATUR_LEVEL is hard coded in astrom_pipe.sex. If you want an instrument specific value, that needs adding
 ############# ---------- #############
@@ -661,6 +661,15 @@ if ( $NOMINAL_NEEDED == 0 ) then
     ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
     /usr/bin/head -$MAX_N_STARS ${TMP_DIR}/tmp3.${unique} >! ${TMP_DIR}/tmp4.${unique}
     ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4.${unique} >! ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict
+
+    set first_try_ct = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'`
+    set less_strict_try_ct = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict | ${awk_bin} '{print $1}'`
+    if ($DEBUG) echo `now_date_string`" : ${procname} : Stars in first run = $first_try_ct. Number in less strict run = $less_strict_try_ct"
+    if ( $first_try_ct == $less_strict_try_ct ) then
+      if ($DEBUG) echo `now_date_string`" : ${procname} : LessStrict offers no advantage. Delete ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict"
+      rm -f ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict
+    endif
+
   endif
 
   if ( $N_STARS_TAKEN < 10 ) then
@@ -679,6 +688,20 @@ if ( $NOMINAL_NEEDED == 0 ) then
     ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
     /usr/bin/head -$MAX_N_STARS ${TMP_DIR}/tmp3.${unique} >! ${TMP_DIR}/tmp4.${unique}
     ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4.${unique} >! ${TMP_DIR}/${inpfile:r:t}_wcs.cat_non_stellar
+
+    set first_try_ct = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'`
+    set nonstellar_try_ct = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat_non_stellar | ${awk_bin} '{print $1}'`
+    if ($DEBUG) echo `now_date_string`" : ${procname} : Stars in first run = $first_try_ct. Number in non-stellar run = $nonstellar_try_ct"
+    if ( $first_try_ct == $nonstellar_try_ct ) then
+      if ($DEBUG) echo `now_date_string`" : ${procname} : Non-stellar offers no advantage. Delete ${TMP_DIR}/${inpfile:r:t}_wcs.cat_non_stellar"
+      rm -f ${TMP_DIR}/${inpfile:r:t}_wcs.cat_non_stellar
+    endif
+
+  endif
+
+  if ($DEBUG) then
+    echo `now_date_string`" : ${procname} : Here is the complete tmp1 SExtractor list without the strict/lessstrict/stellar/nonstellar criteria applied"
+    cat ${TMP_DIR}/tmp1.${unique}
   endif
 
 
@@ -825,7 +848,7 @@ endif
 ###### LESS_STRICT_SEXTRACTOR ###
 #################################
 if ( $REFCATNAME == LESS_STRICT_SEXTRACTOR ) then
-  if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} $inpfile : LESS_STRICT_SEXTRACTOR. This is not a catalogue. It is an instruction to modify SEx parameters." 
+  if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} : LESS_STRICT_SEXTRACTOR. This is not a catalogue. It is an instruction to modify SEx parameters." 
   # This is not a catalogue at all
   # If we reach this point in the catalogue list then we decide that the SEx .cat file we are using
   # is being too restrictive and we will run the whole lot again with a slightly more liberal SExtractor.
@@ -838,13 +861,19 @@ if ( $REFCATNAME == LESS_STRICT_SEXTRACTOR ) then
   # Since this gets deleted once used, that prevents us entering an infinite loop.
   if (-e ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict) then
     if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : There exists a ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict so start again all over with that."
+    #set first_try_ct = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'`
+    #set less_strict_try_ct = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict | ${awk_bin} '{print $1}'`
+    #if ($DEBUG) echo `now_date_string`" : ${procname} : Stars in first run = $first_try_ct. Number in less strict run = $less_strict_try_ct"
     mv -f ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict ${TMP_DIR}/${inpfile:r:t}_wcs.cat
     set N_STARS_TAKEN = `/usr/bin/wc -l ${TMP_DIR}/${inpfile:r:t}_wcs.cat | ${awk_bin} '{print $1}'` 
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : N_STARS_TAKEN = $N_STARS_TAKEN"
     set last_chance = 0
     # Reset REFCAT and we start again
-    set REFCAT = 1
-    if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : I have reset REFCAT to 1. Here we go again....."
+    set REFCAT = 0
+    if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : I have reset REFCAT to 0. Here we go again....."
+  else
+    if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : No less strict catalogue to use. "
+    if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : Maybe >10 'perfect' stars, no extras in the less strict list, or already tried less_strict once."
   endif
   
   if ( $last_chance ) then
@@ -863,7 +892,7 @@ endif
 ###### NON_STELLAR_SEXTRACTOR ###
 #################################
 if ( $REFCATNAME == NON_STELLAR_SEXTRACTOR ) then
-  if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} $inpfile : NON_STELLAR_SEXTRACTOR. This is not a catalogue. It is an instruction to modify SEx parameters." 
+  if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} : NON_STELLAR_SEXTRACTOR. This is not a catalogue. It is an instruction to modify SEx parameters." 
   # This is not a catalogue at all
   # If we reach this point in the catalogue list then we decide that the SEx .cat file we are using
   # is being too restrictive and we will run the whole lot again with a slightly more liberal SExtractor.
@@ -881,8 +910,8 @@ if ( $REFCATNAME == NON_STELLAR_SEXTRACTOR ) then
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : N_STARS_TAKEN = $N_STARS_TAKEN"
     set last_chance = 0
     # Reset REFCAT and we start again
-    set REFCAT = 1
-    if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : I have reset REFCAT to 1. Here we go again....."
+    set REFCAT = 0
+    if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : I have reset REFCAT to 0. Here we go again....."
   else 
     if ($DEBUG) /bin/echo `now_date_string`" : ${procname} : There is no _wcs.cat_non_stellar, so no need to repeat fits."
   endif
@@ -1093,6 +1122,11 @@ endif
 if ( $REFCATNAME == CDS_TWOMASS ) then
   if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} $inpfile : CD TWOMASS search centre is $CAT_SEARCH_CENTRE"
 
+  if (! -e ${MYBIN}find2mass) then
+    if ( $DEBUG ) /bin/echo "`now_date_string` : ${procname} : $inpfile :       but ${MYBIN}find2mass is not installed so CDS_2MASS will be skipped."
+    set THIS_CAT_FAILED = 1
+  else
+
   # If the disk file contains no matches, we try again. We'll probably get 0 again, but worth a try
   if ( -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass ) then
     set CDS_GOOD = `grep matches ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '{print $2}'`
@@ -1142,6 +1176,8 @@ if ( $REFCATNAME == CDS_TWOMASS ) then
     if ( $DEBUG ) /bin/echo "2MASS starb file ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb already exists"
     touch ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
   endif
+
+  endif # End of "if find2mass is installed"
 
   set STARBFILE = ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
 endif
@@ -1267,7 +1303,8 @@ if ( $REFCATNAME == BESPOKE ) then
   #/bin/echo USE_BESPOKE not currently supported
   #set THIS_CAT_FAILED = 1
   set N_STARS_CAT = 7
-  set STARBFILE = ${TMP_DIR}/JL09B01.starb
+  #set STARBFILE = ${TMP_DIR}/JL09B01.starb
+  set STARBFILE = ${TMP_DIR}/bespoke.starb
 endif
 
 #####################
@@ -1363,7 +1400,10 @@ $FITS_AKVC $inpfile CROTA2 DOUBLE $INPUT_ROT            ""      "First guess nom
 #echo `now_date_string` : $procname : $inpfile : Stars in $STARBFILE = `awk '(NR>8)' $STARBFILE | wc -l `
 #echo `now_date_string` : $procname : $inpfile : Stars in ${STARBFILE}.fov = `awk '(NR>8)' ${STARBFILE}.fov | wc -l `
 #rm -f ${TMP_DIR}/tmp[1234].$unique 
-cp ${STARBFILE} ${STARBFILE}.fov
+
+# No need to copy this file if we already know we are not going to run the imwcs.
+# It may well not even exist
+if (! $THIS_CAT_FAILED) cp ${STARBFILE} ${STARBFILE}.fov
 
 
 ########### ASTROMETRIC FIT: begin ###########
