@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.23 2009-02-27 15:16:57 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.24 2011-11-23 11:08:47 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -18,12 +18,14 @@ DOCS 		= $(SRCS:%.java=$(DOCSDIR)/%.html)
 CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properties ltccd4.dprt.properties \
 		ftccd1.dprt.properties ftccd2.dprt.properties ltobs9.dprt.properties \
 		supircam1.dprt.properties supircam2.dprt.properties \
-		ftspec1.dprt.properties ftspec2.dprt.properties \
+		ftspec1.dprt.properties ftspec2.dprt.properties micc1.dprt.properties \
 		spectrograph.dprt.properties nuview1.dprt.properties ratcam1.dprt.properties \
-		frodospec1.dprt.properties estar6.dprt.properties datared.dprt.properties
+		frodospec1.dprt.properties estar6.dprt.properties ringo1.dprt.properties \
+		o1.dprt.properties rise.dprt.properties thor.dprt.properties \
+		datared.ratcam.dprt.properties datared.o.dprt.properties 
 CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
 
-DIRS 		= ccs scs supircam ftspec grope frodospec
+DIRS 		= ccs scs supircam ftspec grope frodospec o rise thor
 
 top: $(OBJS) config
 	@for i in $(DIRS); \
@@ -78,6 +80,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.23  2009/02/27 15:16:57  cjm
+# Added -f to cp.
+#
 # Revision 0.22  2008/12/01 15:25:18  cjm
 # Added datared.dprt.properties.
 #
