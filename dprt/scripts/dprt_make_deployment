@@ -1,6 +1,6 @@
 #!/bin/csh
-# $Header: /space/home/eng/cjm/cvs/dprt/scripts/dprt_make_deployment,v 1.2 2010-03-12 14:49:04 cjm Exp $
-# Version: $Revision: 1.2 $
+# $Header: /space/home/eng/cjm/cvs/dprt/scripts/dprt_make_deployment,v 1.3 2012-01-04 17:12:51 cjm Exp $
+# Version: $Revision: 1.3 $
 # By $Author: cjm $
 # Make a deployment tar file.
 # This contains:
@@ -44,7 +44,7 @@ set install_script      = dprt_tar_install
 # libdprt camera/instrument name
 # switch on machine_name?
 if( ${machine_name} == "datared" ) then
-	set libdprt_prefix = ccs
+	set libdprt_prefix_list = "ccs o"
 else
 	echo "No libdprt prefix configured for ${machine_name}."
 	exit 1
@@ -79,7 +79,10 @@ endif
 #
 echo "Creating directory structure..."
 set dir_count = 0
-set dir_list = "${deployment_dir} ${deployment_dir}/${init_d_dir} ${deployment_dprt_dir} ${deployment_bin_dir} ${deployment_dir}/dprt/tmp ${deployment_dir}/dprt/tmp/log_archive ${deployment_dir}/dprt/log ${deployment_dprt_dir}/config ${deployment_bin_dir}/scripts ${deployment_bin_dir}/ics_util/c/${HOSTTYPE} ${deployment_bin_dir}/ccd/misc/${HOSTTYPE} ${deployment_bin_dir}/javalib ${deployment_bin_dir}/lib/${HOSTTYPE} ${deployment_bin_dir}/autobooter/java ${deployment_bin_dir}/dprt/test ${deployment_bin_dir}/dprt/java/ngat/dprt/${libdprt_prefix} ${deployment_bin_dir}/libdprt/${libdprt_prefix}/test/${HOSTTYPE} ${deployment_bin_dir}/libdprt/object/test/${HOSTTYPE} ${deployment_wcs_bin_dir} ${deployment_dir}/dprt/tmp/wcs"
+set dir_list = "${deployment_dir} ${deployment_dir}/${init_d_dir} ${deployment_dprt_dir} ${deployment_bin_dir} ${deployment_dir}/dprt/tmp ${deployment_dir}/dprt/tmp/log_archive ${deployment_dir}/dprt/log ${deployment_dprt_dir}/config ${deployment_bin_dir}/scripts ${deployment_bin_dir}/ics_util/c/${HOSTTYPE} ${deployment_bin_dir}/ccd/misc/${HOSTTYPE} ${deployment_bin_dir}/javalib ${deployment_bin_dir}/lib/${HOSTTYPE} ${deployment_bin_dir}/autobooter/java ${deployment_bin_dir}/dprt/test ${deployment_bin_dir}/libdprt/object/test/${HOSTTYPE} ${deployment_wcs_bin_dir} ${deployment_dir}/dprt/tmp/wcs"
+foreach libdprt_prefix ( ${libdprt_prefix_list} )
+    set dir_list = "${dir_list} ${deployment_bin_dir}/dprt/java/ngat/dprt/${libdprt_prefix} ${deployment_bin_dir}/libdprt/${libdprt_prefix}/test/${HOSTTYPE}"
+end
 foreach dir ( ${dir_list} )
 	mkdir -p ${dir}
 	if ($status != 0) then
@@ -128,8 +131,10 @@ echo "${jar_count} jars copied."
 # Java classes
 #
 echo "Copying Java class directories..."
-set java_class_dir_list = "autobooter/java dprt/test dprt/java/ngat/dprt dprt/java/ngat/dprt/${libdprt_prefix}"
-# frodospec/java frodospec/test 
+set java_class_dir_list = "autobooter/java dprt/test dprt/java/ngat/dprt "
+foreach libdprt_prefix ( ${libdprt_prefix_list} )
+    set java_class_dir_list = "${java_class_dir_list} dprt/java/ngat/dprt/${libdprt_prefix}"
+end
 set java_class_dir_count = 0
 foreach java_class_dir ( ${java_class_dir_list} )
 	echo "Java class directory : ${java_class_dir}"
@@ -162,7 +167,14 @@ echo "${java_class_dir_count} Java class directories copied."
 # C libraries
 #
 echo "Copying C libraries..."
-set clib_list = "libcfitsio.so libngatfits.so libngatutil.so libdprt_jni_general.so libdprt_${libdprt_prefix}.so libccd_dprt.so libdprt_object.so libdprt_libfits.so liblt_filenames.so"
+set clib_list = "libcfitsio.so libngatfits.so libngatutil.so libdprt_jni_general.so libccd_dprt.so libdprt_object.so libdprt_libfits.so liblt_filenames.so"
+foreach libdprt_prefix ( ${libdprt_prefix_list} )
+    set clib_list = "${clib_list} libdprt_${libdprt_prefix}.so "
+end
+# ioo ccd_dprt if applicable
+if( ${machine_name} == "datared" ) then
+    set clib_list = "${clib_list} libioo_ccd_dprt.so"
+endif
 set clib_count = 0
 foreach clib ( ${clib_list} )
 	echo "C Library : ${clib}"
@@ -192,7 +204,10 @@ echo "${clib_count} C libraries copied."
 # C test programs to /dprt path
 #
 echo "Copying C test program directories..."
-set dir_list = "ics_util/c/${HOSTTYPE} ccd/misc/${HOSTTYPE} libdprt/${libdprt_prefix}/test/${HOSTTYPE} libdprt/object/test/${HOSTTYPE}"
+set dir_list = "ics_util/c/${HOSTTYPE} ccd/misc/${HOSTTYPE} libdprt/object/test/${HOSTTYPE}"
+foreach libdprt_prefix ( ${libdprt_prefix_list} )
+    set dir_list = "${dir_list} libdprt/${libdprt_prefix}/test/${HOSTTYPE}"
+end
 set dir_count = 0
 set file_count = 0
 # clean out deployment_tmp_dir
@@ -326,7 +341,12 @@ echo "${file_count} scripts copied to wcs_fit dir."
 #
 # in bin sub-directories
 echo "Copying machine configuration files..."
-set file_list = "dprt/java/${machine_name}.dprt.properties autobooter/java/${machine_name}.autobooter.properties"
+set file_list = "autobooter/java/${machine_name}.autobooter.properties"
+if( ${machine_name} == "datared" ) then
+    set file_list = "${file_list} dprt/java/${machine_name}.ratcam.dprt.properties dprt/java/${machine_name}.o.dprt.properties"
+else
+    set file_list = "${file_list} dprt/java/${machine_name}.dprt.properties"
+endif
 set file_count = 0
 cd ${dev_dir}
 foreach file ( ${file_list} )
@@ -342,7 +362,7 @@ end
 echo "${file_count} configs copied to bin dir."
 # to wcs_fit dir
 echo "Copying wcs_fit configuration files..."
-set file_list = "astrom_pipe.sex astrom_pipe.param"
+set file_list = "astrom_pipe.sex.datared astrom_pipe.param"
 set file_count = 0
 cd ${dev_dir}
 foreach file ( ${file_list} )
@@ -386,13 +406,15 @@ rm -f ${deployment_tar}.gz
 gzip ${deployment_tar}
 echo "Deployment tar : ${deployment_tar_dir}/${deployment_tar}.gz"
 echo "Installation script : ${current_dir}/${install_script}"
-# diddly
 rm -rf ${deployment_dir}
 echo "Download from http://ltdevsrv.livjm.ac.uk/~dev/dprt/deployment/index.html."
 echo "Download ${deployment_tar}.gz ${install_script} dprt_cshrc dprt_cshrc_edit.awk"
 echo "Deployment ready."
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2010/03/12 14:49:04  cjm
+# Added new scripts required by RKS wcs_fit.
+#
 # Revision 1.1  2009/03/13 15:33:56  cjm
 # Initial revision
 #
