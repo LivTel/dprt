@@ -150,7 +150,8 @@ set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth att
 # Tests show that so long as the ROT configs in the RCS are correct, any WCS rotations > 2 are very unlikely to be correct.
 # Conversely, rotations < 2 are not a good indication that it is correct. I.e, this only ever excludes fits, never includes them
 # Maybe use more than 2 to allow for RCS config imperfections.
-set MAX_ROT_CHANGE 	= 3	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
+#set MAX_ROT_CHANGE 	= 3	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
+set MAX_ROT_CHANGE 	= 20	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
 set MAX_POINT_CHANGE 	= 120	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
@@ -358,8 +359,7 @@ switch ( $INSTRUMENT )
 	#mv /tmp/fliptemp.fits $inpfile
 	#cp $inpfile ${inpfile}.bak
 	#set tmprotskypa = `/usr/local/bin/fits_get_keyword_value $inpfile ROTSKYPA STRING `
-	#set newrotskypa = ` echo " $tmprotskypa 78.7 - p " | dc `
-	#set newrotskypa = ` echo " $tmprotskypa 156.7 - p " | dc `
+	#set newrotskypa = ` echo " $tmprotskypa 29 + p " | dc `
 	#/usr/local/bin/fits_add_keyword_value $inpfile ROTSKYPA DOUBLE $newrotskypa 
 	#/usr/local/bin/fits_add_keyword_value ${inpfile}.bak ROTSKYPA DOUBLE $newrotskypa 
 	#
