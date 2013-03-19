@@ -12,6 +12,7 @@
 # 11 : Binning value appears to be neither 1 or 2. We currently only handle 1x1 and 2x2
 # 12 : Could not identify instrument from FITS header
 # 17 : Illegal value of $REFCAT. Should never happen. Probably a bug.
+# 25 : Missing one of the required binary executables
 # 26 : Cannot find MYBIN which varies by machine
 # 27 : Cannot find base_tmp_dir(or TMP_DIR) which varies by machine
 # 28 : Unknown OS in $os_name
@@ -138,7 +139,6 @@ endif
 # Setup and Config Parameters
 #
 set MAX_SEx_STARS	= 500	# If Sextractor returns more than this, we think there is a problem and increase detection sigma from the default
-#set MAX_N_STARS 	= 20    # Max number of stars to select from the CCD image. The brightest N will be used in the wcs fit
 set N_STARS_TO_USE 	= 20    # Will ultimately be set to half of N_STARS or this value, whichever is the higher...
 set MAX_N_STARS 	= 50   # 	but can never be bigger than this
 #set MAX_N_STARS 	= 20   # 	but can never be bigger than this
@@ -150,17 +150,37 @@ set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth att
 # Tests show that so long as the ROT configs in the RCS are correct, any WCS rotations > 2 are very unlikely to be correct.
 # Conversely, rotations < 2 are not a good indication that it is correct. I.e, this only ever excludes fits, never includes them
 # Maybe use more than 2 to allow for RCS config imperfections.
-#set MAX_ROT_CHANGE 	= 3	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
-set MAX_ROT_CHANGE 	= 20	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
-set MAX_POINT_CHANGE 	= 120	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
+set MAX_ROT_CHANGE 	= 3	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
+set MAX_POINT_CHANGE 	= 130	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
+set MAX_POINT_CHANGE 	= 200	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
+#set max_fit_residual    = "4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
+set MAX_ELONGATION	= 3	# SExtractor sources with major:minor axis ratios greater than this will be rejected
 
 
 
 set FITS_AKVC = ${MYBIN}/fits_add_keyword_value_comment_static
+set FITS_GKV = ${MYBIN}/fits_get_keyword_value
 set FITS_MODIFY_COMMENT = ${MYBIN}/fits_modify_comment_static
 set ITERSTAT = ${MYBIN}/iterstat
+if (! -e $FITS_AKVC ) then
+  echo Missing required binary : $FITS_AKVC
+  exit 25
+endif
+if (! -e $FITS_GKV ) then
+  echo Missing required binary : $FITS_GKV
+  exit 25
+endif
+if (! -e $FITS_MODIFY_COMMENT ) then
+  echo Missing required binary : $FITS_MODIFY_COMMENT
+  exit 25
+endif
+if (! -e $ITERSTAT ) then
+  # $ITERSTAT is only used in special circumstances, but I may as well make it mandatory
+  echo Missing required binary : $ITERSTAT
+  exit 25
+endif
 
 
 
@@ -230,7 +250,7 @@ if ($DEBUG) /bin/echo "`now_date_string` : $procname : Unique ID flag = ${unique
 # basis of building the final output file. To provide this we make a copy of the original
 # input file. 
 # If the input file already has a WCS, we could run remove_wcs.csh on it. This is not currently done
-# but is worth considereing. In most cases it makes little or no difference but there can sometimes be
+# but is worth considering. In most cases it makes little or no difference but there can sometimes be
 # problems in fitting a WCS to a file which already has one. The main difference though is just that 
 # the output diagnostics show how far the new WCS is from the old one rather then how far from the blind pointing.
 /bin/cp -f $inpfile ${inpfile}.bak
@@ -330,6 +350,27 @@ switch ( $INSTRUMENT )
 	set CAT_SEARCH_RADIUS = 4
 	set NEEDS_FLIP = ""		# Tells imwcs to flip the image left-right
 	breaksw
+    case 'Ringo3' :
+        # Use _ instead of minus sign -
+        # APERTUREX,APERTUREY not curerntly being used. They are used to convert ROTCENT to POICENT,
+        # but we now actually have POICENT in the headers, so they are no longer required.
+        set APERTUREX = 0
+        set APERTUREY = 0
+        if ( $BINNING == 2 ) then
+          set do_fixpix = 0
+          set fixpix_param = ""
+          set DETECT_MINAREA = 9
+        else if ( $BINNING == 1 ) then
+          set do_fixpix = 0
+          set fixpix_param = ""
+          set DETECT_MINAREA = 18
+        else
+          if ( $DEBUG ) /bin/echo "`now_date_string` : $procname : $inpfile : Unsupported RINGO binning." >> $LOGFILE
+          set DETECT_MINAREA = 9
+        endif
+        set CAT_SEARCH_RADIUS = 4
+        set NEEDS_FLIP = ""             # Tells imwcs to flip the image left-right
+        breaksw
     case 'IO:O' :
 	# Use _ instead of minus sign -
         # APERTUREX,APERTUREY not curerntly being used. They are used to convert ROTCENT to POICENT,
@@ -364,6 +405,60 @@ switch ( $INSTRUMENT )
 	#/usr/local/bin/fits_add_keyword_value ${inpfile}.bak ROTSKYPA DOUBLE $newrotskypa 
 	#
 	breaksw
+    case 'THOR' :
+	# Use _ instead of minus sign -
+        # APERTUREX,APERTUREY not curerntly being used. They are used to convert ROTCENT to POICENT,
+        # but we now actually have POICENT in the headers, so they are no longer required.
+	set APERTUREX = 0
+	set APERTUREY = 0
+	if ( $BINNING == 2 ) then
+	  set do_fixpix = 0
+	  set fixpix_param = ""
+	  set DETECT_MINAREA = 9
+	else if ( $BINNING == 1 ) then
+	  set do_fixpix = 0
+	  set fixpix_param = ""
+	  set DETECT_MINAREA = 18
+        else
+          if ( $DEBUG ) /bin/echo "`now_date_string` : $procname : $inpfile : Unsupported THOR binning." >> $LOGFILE
+          set DETECT_MINAREA = 9
+	endif
+	set CAT_SEARCH_RADIUS = 2
+	#
+	#set NEEDS_FLIP = "-l -r 180 "		# Tells imwcs to flip the image top-bottom 
+	set NEEDS_FLIP = ""		
+	#
+	# Rather than doing this in imwcs using $NEEDS_FLIP, I will actually flip the FITS file
+	# and then run the fit as if it were correct to start with
+	#
+	# Temporarily deal with the flip
+	set already_flipped = ` $FITS_GKV $inpfile L1FLIPX INT |& grep -v "keyword not found" `
+	if ( "$already_flipped" == "" || "$already_flipped" == "0" ) then
+	  if ($DEBUG) echo "`now_date_string` : $procname : $inpfile : Thor image needs flip" >> $LOGFILE
+	  /usr/local/bin/fits_flip_double_static -i $inpfile -o /tmp/fliptemp${unique}.fits -x
+	  $FITS_AKVC /tmp/fliptemp${unique}.fits L1FLIPX INT 1 "" "Array x-axis flipped by pipeline"
+	  mv /tmp/fliptemp${unique}.fits $inpfile
+	else 
+	  if ($DEBUG) echo "`now_date_string` : $procname : $inpfile : Thor image already flipped" >> $LOGFILE
+	  if ($DEBUG) echo $already_flipped >> $LOGFILE
+	endif
+	# Must also do this on ${inpfile}.bak since that is what the final output image is derived from 
+	cp $inpfile ${inpfile}.bak
+	#set already_flipped = ` $FITS_GKV ${inpfile}.bak L1FLIPX INT |& grep -v "keyword not found" `
+	#if ( "$already_flipped" == "" || "$already_flipped" == "0" ) then
+	#  /usr/local/bin/fits_flip_double_static -i ${inpfile}.bak -o /tmp/fliptemp${unique}.fits -x
+	#  $FITS_AKVC /tmp/fliptemp${unique}.fits L1FLIPX INT 1 "" "Array x-axis flipped by pipeline"
+	#  mv /tmp/fliptemp${unique}.fits ${inpfile}.bak
+	#endif
+
+	# Patch up ROTSKYPA. Should be correct straight from the RCS
+	#set tmprotskypa = `/usr/local/bin/fits_get_keyword_value $inpfile ROTSKYPA STRING `
+	#set newrotskypa = ` echo " $tmprotskypa 90 - p " | dc `
+	#/usr/local/bin/fits_add_keyword_value $inpfile ROTSKYPA DOUBLE $newrotskypa 
+	#cp $inpfile ${inpfile}.bak
+	#
+	breaksw
+
     default :
 	echo "`now_date_string` : $procname : $inpfile : Instrument not recognized. " | tee $LOGFILE
 	exit 12
@@ -440,6 +535,17 @@ ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -catalog_name ${TMP_DIR}/${inpfile:r:t}_i
 ###Below: managing the sex files image.dat->wcs.cat
 ###       Preparing the extracted source catalog for matching
 
+# Later we will discard any highly elogated sources. They are most likely image defects of CRs but may also
+# indicate tracking errors. Either way, it is dubious that we want or need a robust WCS
+# This code snippet looks in the catalogue file and figures out which column contains ELONGATION. Then we can simply
+# awk it out later
+set ELONGATION_FIELD = `${awk_bin} '($3=="ELONGATION") {print $2}' ${TMP_DIR}/${inpfile:r:t}_image.cat`
+if ( "$ELONGATION_FIELD" == "" ) then
+  # Something is wrong. This should never happen, but then it is not really a critical error either
+  # No reason to stop just because this filter failed
+  /bin/echo "`now_date_string` : $procname : ELONGATION not set in ${TMP_DIR}/${inpfile:r:t}_image.cat" | tee $LOGFILE
+endif
+
 # Flags to identify specific error states. These are not used much. 
 set SEx_failed = 0
 set too_few_stars = 0
@@ -451,7 +557,8 @@ if ( ! -s ${TMP_DIR}/${inpfile:r:t}_image.cat ) then
 	set NOMINAL_NEEDED = 2        # No point even trying the imwcs
 	set N_STARS = 0
 else
-	set N_STARS = `${awk_bin} '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat | /usr/bin/wc -l | ${awk_bin} '{print $1}'`
+	# N_STARS ignores elongated sources, but they have not yet been pruned out of the cat file
+	set N_STARS = `${awk_bin} '! /^#/ && ($'$ELONGATION_FIELD'<'$MAX_ELONGATION') ' ${TMP_DIR}/${inpfile:r:t}_image.cat | /usr/bin/wc -l | ${awk_bin} '{print $1}'`
 	if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Number of sources extracted by SEx: $N_STARS" >> $LOGFILE
 	#RJS if ( $DEBUG )  /bin/echo "`now_date_string` $procname Number of sources extracted by SEx: $N_STARS"
 
@@ -460,7 +567,8 @@ else
 	set SEx_THRESH = 5
 	while ( ( $N_STARS > $MAX_SEx_STARS ) && ( $SEx_THRESH < 50 ) )
 	  ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -DETECT_THRESH $SEx_THRESH -catalog_name ${TMP_DIR}/${inpfile:r:t}_image.cat -PARAMETERS_NAME ${MYBIN}astrom_pipe.param -DETECT_MINAREA $DETECT_MINAREA ${inpfile}
-	  set N_STARS = `/bin/awk '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat|wc -l | /bin/awk '{print $1}'`
+	  # N_STARS ignores elongated sources, but they have not yet been pruned out of the cat file
+	  set N_STARS = `/bin/awk '! /^#/ && ($'$ELONGATION_FIELD'<'$MAX_ELONGATION') ' ${TMP_DIR}/${inpfile:r:t}_image.cat|wc -l | /bin/awk '{print $1}'`
 	  if ( $DEBUG )  /bin/echo "Number of sources extracted by SEx at $SEx_THRESH sigma : $N_STARS"
 	  @ SEx_THRESH += 2
 	end
@@ -475,7 +583,8 @@ else
 	  if ($DEBUG) /bin/echo "`now_date_string` : $procname : Image stats from iterstat: $SKY_MEAN ± $SKY_RMS. New threshold = $SEx_THRESH"
 	  if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${MYBIN}sex -c ${MYBIN}astrom_pipe.sex -PARAMETERS_NAME ${MYBIN}astrom_pipe.param -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile" >> $LOGFILE
 	  ${MYBIN}sex                                                        -c ${MYBIN}astrom_pipe.sex -PARAMETERS_NAME ${MYBIN}astrom_pipe.param -THRESH_TYPE ABSOLUTE -DETECT_THRESH $SEx_THRESH -DETECT_MINAREA $DETECT_MINAREA -CATALOG_NAME ${TMP_DIR}/${inpfile:r:t}_image.cat $inpfile
-	  set N_STARS = `${awk_bin} '! /^#/' ${TMP_DIR}/${inpfile:r:t}_image.cat| /usr/bin/wc -l | ${awk_bin} '{print $1}'`
+	  # N_STARS ignores elongated sources, but they have not yet been pruned out of the cat file
+	  set N_STARS = `${awk_bin} '! /^#/ && ($'$ELONGATION_FIELD'<'$MAX_ELONGATION') ' ${TMP_DIR}/${inpfile:r:t}_image.cat| /usr/bin/wc -l | ${awk_bin} '{print $1}'`
 	  if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Number of sources extracted by SEx at $SEx_THRESH=$SEx_THRESH (5 iterstat sigma) : $N_STARS" >> $LOGFILE
 	endif
 
@@ -491,6 +600,13 @@ else
 	if ($tmp_int > $N_STARS_TO_USE ) set N_STARS_TO_USE = $tmp_int
 	if ($N_STARS_TO_USE > $MAX_N_STARS ) set N_STARS_TO_USE = $MAX_N_STARS
 	if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : N_STARS_TO_USE is $N_STARS_TO_USE"
+
+
+# Finished running SExtractor and deciding whether this run is any use, so now I can finally pull the
+# elongated sources out of the cat.
+/bin/echo "`now_date_string` : $procname : Elongation cut rejected " `${awk_bin} '! /^#/ && ($'$ELONGATION_FIELD'>'$MAX_ELONGATION') ' ${TMP_DIR}/${inpfile:r:t}_image.cat| /usr/bin/wc -l `
+${awk_bin} '/^#/ ; ! /^#/ && ($'$ELONGATION_FIELD'<'$MAX_ELONGATION')' ${TMP_DIR}/${inpfile:r:t}_image.cat   >! ${TMP_DIR}/tmp1.$unique
+mv ${TMP_DIR}/tmp1.$unique ${TMP_DIR}/${inpfile:r:t}_image.cat
 
 #There is only any point parsing these files if SEx ran and seems to have worked OK
 if ( $NOMINAL_NEEDED == 0 ) then
@@ -675,6 +791,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
   # root not being a real user on the nfs mount cannot directly execute the script, but can via executing ${awk_bin}
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}" >> $LOGFILE
   ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}
+  if ($DEBUG) /bin/echo `now_date_string` : $procname : Before and after FWHM rejection there were `cat ${TMP_DIR}/tmp1.${unique} | wc -l` and `cat ${TMP_DIR}/tmp2.${unique} | wc -l` sources respectively
   # Ensure the contents of MAG_BEST_FIELD field are < 99 (${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3)
   ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} > ${TMP_DIR}/tmp3.${unique}
   # Keep only $MAX_N_STARS best
@@ -697,6 +814,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
     if ($DEBUG) /bin/cat ${TMP_DIR}/fwhm_limit.awk.${unique} >> $LOGFILE
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}" >> $LOGFILE
     ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} >! ${TMP_DIR}/tmp2.${unique}
+    if ($DEBUG) /bin/echo `now_date_string` : $procname : Before and after FWHM rejection there were `cat ${TMP_DIR}/tmp1.${unique} | wc -l` and `cat ${TMP_DIR}/tmp2.${unique} | wc -l` sources respectively
     ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
     /usr/bin/head -$N_STARS_TO_USE ${TMP_DIR}/tmp3.${unique} >! ${TMP_DIR}/tmp4.${unique}
     ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4.${unique} >! ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict
@@ -712,18 +830,19 @@ if ( $NOMINAL_NEEDED == 0 ) then
   endif
 
   if ( $N_STARS_TAKEN < 10 ) then
-    # Fewer than 10 "OK" stars, so we will try the less strict SExtractor criteria
-    # Repeat all that using the less strict SExtractor criteria so that we keep stars which have been deblended
+    # Fewer than 10 "OK" stars, so we will try being even more slack. This time, no FWHM limit to include non-stellar sources.
     if (-e ${TMP_DIR}/fwhm_limit.awk.${unique} ) /bin/rm -f ${TMP_DIR}/fwhm_limit.awk.${unique}
     /bin/touch ${TMP_DIR}/fwhm_limit.awk.${unique}
     /bin/chmod +x ${TMP_DIR}/fwhm_limit.awk.${unique}
     /bin/echo '#!'${awk_bin}' -f' >> ${TMP_DIR}/fwhm_limit.awk.${unique}
     # ${SEx_FLAG} < 8 allows saturated and blended stars to be used but not any that intersect the CCD edges
+    # Note no FWHM limits is applied here even though the file is called fwhm_limit.awk. This is a last ditch effort to even use fuzzy sources
     /bin/echo '( $'"${SEx_FLAG}"' < 8 )' >> ${TMP_DIR}/fwhm_limit.awk.${unique}
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${TMP_DIR}/fwhm_limit.awk.${unique} contents:" >> $LOGFILE
     if ($DEBUG) /bin/cat ${TMP_DIR}/fwhm_limit.awk.${unique} >> $LOGFILE
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}" >> $LOGFILE
     ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} >! ${TMP_DIR}/tmp2.${unique}
+    if ($DEBUG) /bin/echo `now_date_string` : $procname : Without using a FWHM limit, before and after are `cat ${TMP_DIR}/tmp1.${unique} | wc -l` and `cat ${TMP_DIR}/tmp2.${unique} | wc -l` sources respectively
     ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
     /usr/bin/head -$N_STARS_TO_USE ${TMP_DIR}/tmp3.${unique} >! ${TMP_DIR}/tmp4.${unique}
     ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4.${unique} >! ${TMP_DIR}/${inpfile:r:t}_wcs.cat_non_stellar
@@ -742,7 +861,11 @@ if ( $NOMINAL_NEEDED == 0 ) then
     echo `now_date_string`" : ${procname} : Here is the complete tmp1 SExtractor list without the strict/lessstrict/stellar/nonstellar criteria applied" >> $LOGFILE
     cat ${TMP_DIR}/tmp1.${unique} >> $LOGFILE
   endif
-
+  if ($DEBUG) then
+    echo `now_date_string`" : ${procname} : And here after applying all the data quality clips" >> $LOGFILE
+    echo `now_date_string`" : ${procname} : This is _wcs.cat. If this list is short, there may also be _wcs.cat_less_strict and _wcs.cat_non_stellar" >> $LOGFILE
+    cat ${TMP_DIR}/${inpfile:r:t}_wcs.cat >> $LOGFILE
+  endif
 
   if ( $DEBUG < 2 ) then
     /bin/rm -f ${TMP_DIR}/tmp1.${unique} ${TMP_DIR}/tmp2.${unique} ${TMP_DIR}/tmp3.${unique} ${TMP_DIR}/tmp4.${unique}
@@ -1005,8 +1128,8 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
     # No fancy reformatting of RA,DEC required. scat can take HH:MM:SS DD:MM:SS straight from the FITS header
     # scat requires search radius in arcsec, not arcminutes
     # scat (-t) can create the starb file directly for itself. No need to build it like we do for USNOB
-    ${MYBIN}/scat -c tmc    -r $CAT_SEARCH_RADIUS_SEC -n 5000 $RA $DE J2000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass 
-	    ${MYBIN}/scat -c tmc -t -r $CAT_SEARCH_RADIUS_SEC -n 5000 $RA $DE J2000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb 
+    ${MYBIN}/scat -c tmc    -r $CAT_SEARCH_RADIUS_SEC -n 10000 $RA $DE J2000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass 
+	    ${MYBIN}/scat -c tmc -t -r $CAT_SEARCH_RADIUS_SEC -n 10000 $RA $DE J2000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb 
 	    set COUNT = `wc -l ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '{print $1}'`
 	    if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} WcsTools scat returned $COUNT objects" >> $LOGFILE
 	    if ($COUNT == 0) then
@@ -1184,8 +1307,8 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  # Do catalogue search if the file is not already available on disk
 	  set DO_GENERATE_STARB = 0
 	  if ( ! -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass ) then
-	    /bin/echo "/usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 5000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass "
-	    /usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 5000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
+	    /bin/echo "/usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 10000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass "
+	    /usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 10000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
 	    if ( $DEBUG ) /bin/echo CDS returned `tail -1 ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '{print $2}'` objects >> $LOGFILE
 	    set DO_GENERATE_STARB = 1
 	  else
@@ -1497,6 +1620,11 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  # For example, the default we usually use is 2 so that for 10 stars in the image, imwcs will only consider
 	  # the 20 brightest in its catalogue. Hight numbers very occaussionally help.
 	  set IMWCS_S = 2
+
+	  # Irrespective of S, the max number to use is capped by H so increasing s alone normally leads to 
+          # no more stars actually getting used. 75 is a good default, but once we get into increasing S, we will
+          # also need to increase H
+	  set IMWCS_H = 75
 	  
 	  # Optionally we can iterate the fits tweaking certain parameters to try and find a better fit.
 	  # Various experiments have not shown any great advantage and we rarely improve on the first attempt
@@ -1511,8 +1639,8 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  if (-e ${TMP_DIR}/${inpfile:r:t}_temp.fits) /bin/rm -f ${TMP_DIR}/${inpfile:r:t}_temp.fits
 	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Performing Astrometric Fit..." >> $LOGFILE
 
-	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h 75 -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
-  (                                                         ${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h 75 -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
+  (                                                         ${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
 #  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (/mnt/newarchive1/old-root/usr/local/bin/wcs/imwcs-3.6.4 -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
 #  (                                                         /mnt/newarchive1/old-root/usr/local/bin/wcs/imwcs-3.6.4 -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
 
@@ -1532,6 +1660,8 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
     if ( ($IMWCS_FAILED == 1) || ( ($NMATCH < $THR_ABSOLUTE) && ($MATCHFRAC < ${THR_FRACTION})) || ($NMATCH < $MIN_N_STARS)) then
        set IMWCS_S = `echo "1k $IMWCS_S 0.5 + p " | ${dc_bin} ` 
        if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : That didn't work. Try -s $IMWCS_S instead" >> $LOGFILE
+       # No point increasing -s if it then just gets capped by -h, so also set -h to its max of 200
+       set IMWCS_H = 200;
 #      set ROTSKYPA = `echo $ROTSKYPA | sed 's/-/_/'`
 #      set ROTSKYPA = `echo "$ROTSKYPA 90 + p" | ${dc_bin} `
     else
@@ -1757,9 +1887,13 @@ if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then
 endif
 
 if ( ${resid_test} == 1 ) then
-  # or use fit_residual
-  /bin/echo "`now_date_string` : $procname : $inpfile : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
-  set THIS_CAT_FAILED = 1
+# RJS temp 2013-01-09
+#  if ($MATCHFRAC>70 && $NMATCH>10 ) then
+#    /bin/echo "`now_date_string` : $procname : $inpfile : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec, but since $MATCHFRAC per cent were matched, we will use this anyway."
+#  else 
+    /bin/echo "`now_date_string` : $procname : $inpfile : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
+    set THIS_CAT_FAILED = 1
+#  endif
 endif
 
 if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
