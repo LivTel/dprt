@@ -141,7 +141,6 @@ endif
 set MAX_SEx_STARS	= 500	# If Sextractor returns more than this, we think there is a problem and increase detection sigma from the default
 set N_STARS_TO_USE 	= 20    # Will ultimately be set to half of N_STARS or this value, whichever is the higher...
 set MAX_N_STARS 	= 50   # 	but can never be bigger than this
-#set MAX_N_STARS 	= 20   # 	but can never be bigger than this
 # THR_FRACTION = 50% is an incredibly successful threshold in tests despite sounding completely arbitrary. If you plot DEL_POINT vs MATCHFRAC
 # there is a very dramatic discontinuity at 50%
 set THR_FRACTION 	= 50	# (%) Per centage of catalogue stars which must be matched in image for good fit...
@@ -151,8 +150,9 @@ set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth att
 # Conversely, rotations < 2 are not a good indication that it is correct. I.e, this only ever excludes fits, never includes them
 # Maybe use more than 2 to allow for RCS config imperfections.
 set MAX_ROT_CHANGE 	= 3	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
+set MAX_ROT_CHANGE 	= 8	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
 set MAX_POINT_CHANGE 	= 130	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
-set MAX_POINT_CHANGE 	= 200	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
+#set MAX_POINT_CHANGE 	= 60	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 #set max_fit_residual    = "4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
@@ -275,7 +275,7 @@ set do_fixpix = 0
 set fixpix_param = ""
 
 if ( ( $BINNING < 1) || ($BINNING > 2 ) )  then
-    /bin/echo "`now_date_string` : $procname : $inpfile : Binning value appears to be neither 1 or 2. We currently only handle 1x1 and 2x2." | tee $LOGFILE
+    /bin/echo "`now_date_string` : $procname : $inpfile : Binning value ($BINNING) appears to be neither 1 or 2. We currently only handle 1x1 and 2x2." | tee $LOGFILE
     exit 11
 endif
 
@@ -436,8 +436,12 @@ switch ( $INSTRUMENT )
 	if ( "$already_flipped" == "" || "$already_flipped" == "0" ) then
 	  if ($DEBUG) echo "`now_date_string` : $procname : $inpfile : Thor image needs flip" >> $LOGFILE
 	  /usr/local/bin/fits_flip_double_static -i $inpfile -o /tmp/fliptemp${unique}.fits -x
+	  #/usr/local/bin/fits_flip_static -i $inpfile -o /tmp/fliptemp${unique}.fits -x
+	  # Convert to BITPIX 16 with BSCALE and BZERO
+	  imarith_bitpix16 /tmp/fliptemp${unique}.fits + 0 /tmp/fliptempbitpix16${unique}.fits
 	  $FITS_AKVC /tmp/fliptemp${unique}.fits L1FLIPX INT 1 "" "Array x-axis flipped by pipeline"
-	  mv /tmp/fliptemp${unique}.fits $inpfile
+	  mv -f /tmp/fliptempbitpix16${unique}.fits $inpfile
+	  rm /tmp/fliptemp${unique}.fits
 	else 
 	  if ($DEBUG) echo "`now_date_string` : $procname : $inpfile : Thor image already flipped" >> $LOGFILE
 	  if ($DEBUG) echo $already_flipped >> $LOGFILE
@@ -606,7 +610,7 @@ else
 # elongated sources out of the cat.
 /bin/echo "`now_date_string` : $procname : Elongation cut rejected " `${awk_bin} '! /^#/ && ($'$ELONGATION_FIELD'>'$MAX_ELONGATION') ' ${TMP_DIR}/${inpfile:r:t}_image.cat| /usr/bin/wc -l `
 ${awk_bin} '/^#/ ; ! /^#/ && ($'$ELONGATION_FIELD'<'$MAX_ELONGATION')' ${TMP_DIR}/${inpfile:r:t}_image.cat   >! ${TMP_DIR}/tmp1.$unique
-mv ${TMP_DIR}/tmp1.$unique ${TMP_DIR}/${inpfile:r:t}_image.cat
+mv -f ${TMP_DIR}/tmp1.$unique ${TMP_DIR}/${inpfile:r:t}_image.cat
 
 #There is only any point parsing these files if SEx ran and seems to have worked OK
 if ( $NOMINAL_NEEDED == 0 ) then
@@ -1148,6 +1152,20 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	    set THIS_CAT_FAILED = 1
 	  endif
 
+          # If this is an M31 field, prune out M31 itself
+          set temp_dec = `echo $INPUT_DEC | tr "-" "_" | tr "+" " "`
+          # Calc distance from M31 in 1000ths of a deg as an int
+          if (`echo "5k $INPUT_RA 10.684 - d* $temp_dec 41.267 - d* + v 1000 * 0 k 1 / p" | dc` < 500) then
+            if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune M31 `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
+            # No need to handle -v dec here
+            head -10 ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb >! ${TMP_DIR}/tmp3.$unique
+            cat ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb | tr ":" " " | awk '(NR>10) {print $1,15*($2+$3/60+$4/3600),$5+$6/60+$7/3600,$8,$9,$10,$11}' >! ${TMP_DIR}/tmp4.$unique
+            awk '( sqrt(($2-10.684)**2+($3-41.267)**2)>0.05) {print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7}' ${TMP_DIR}/tmp4.$unique >! ${TMP_DIR}/tmp5.$unique
+            cat ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp5.$unique >! ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
+            if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune M31 done `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
+            /bin/rm -f ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp5.$unique
+          endif
+
 	endif
 
 	##########################
@@ -1340,6 +1358,21 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	      /bin/sed 's/-//g ; s/+//g'  ${TMP_DIR}/tmp5.$unique >  ${TMP_DIR}/tmp6.$unique
 	      /bin/sed 's/M/-/g ; s/P/+/g'  ${TMP_DIR}/tmp6.$unique >>   ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
 	      /bin/rm -f ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp5.$unique ${TMP_DIR}/tmp6.$unique
+
+	      # If this is an M31 field, prune out M31 itself
+	      set temp_dec = `echo $INPUT_DEC | tr "-" "_" | tr "+" " "`
+	      # Calc distance from M31 in 1000ths of a deg as an int
+	      if (`echo "5k $INPUT_RA 10.684 - d* $temp_dec 41.267 - d* + v 1000 * 0 k 1 / p" | dc` < 500) then
+		echo "Prune M31" `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
+		# No need to handle -v dec here
+		head -8 ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb >! ${TMP_DIR}/tmp3.$unique
+		cat ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb | tr ":" " " | awk '(NR>8) {print 15*($1+$2/60+$3/3600),$4+$5/60+$6/3600,$7}' >! ${TMP_DIR}/tmp4.$unique
+		awk '( sqrt(($1-10.684)**2+($2-41.267)**2)>0.05) {print $1"\t"$2"\t"$3}' ${TMP_DIR}/tmp4.$unique >! ${TMP_DIR}/tmp5.$unique
+		cat ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp5.$unique >! ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
+		echo "Prune M31 done" `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
+		/bin/rm -f ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp5.$unique
+	      endif
+
 	    else
 	      /bin/echo "2MASS catalogue failed. WCS fit will not be possible."
 	      set THIS_CAT_FAILED = 1
@@ -1371,21 +1404,32 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	    goto LOOP_START
 	  endif
 
+	  # get_local_usnob.csh uses search box diameter, not radius
+	  set TRUE_SIZE_X = `echo "1k $CAT_SEARCH_RADIUS 2 * p" | dc `
 
-	# Once you get the usnob file, check it is valid and retry if need be 
+	  # In the unlikely event thhat you have run a WCS for one camera and then try a WCS for the same field with a larger
+	  # camera you could end up using the catalogue which was created for the small camera and the fit failing.
+	  # Therefore we will check the cached usnob header make sure the catalogue is for a camera
+	  # with the correct FoV, $CAT_SEARCH_RADIUS 
+	  if ( -s ${TMP_DIR}/${RASTR}${DESTR}.usnob ) then
+	    set cached_diameter_deg = `grep "Box Width" ${TMP_DIR}/${RASTR}${DESTR}.usnob | sed 's/^.*=//;s/\/.*//' `
+	    set fov_diff_percent = ` echo "3k $cached_diameter_deg $TRUE_SIZE_X 60 / - d*v $cached_diameter_deg / 100 * 0k 1/ p" | dc `
+	    if ( $fov_diff_percent >= 10 ) then
+	       if ($DEBUG) /bin/echo "`now_date_string` : $procname : FOV mismatch in archive catalogue searches. Delete cached USNOB files " >> $LOGFILE
+	      rm -f ${TMP_DIR}/${RASTR}${DESTR}.usnob
+	      if (-e ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb) rm -f ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb
+	      if (-e ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob) rm -f ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob
+	      if (-e ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb) rm -f ${TMP_DIR}/crop_${RASTR}${DESTR}_usnob.starb
+	    endif
+	  endif
+
+	  # Once you get the usnob file, check it is valid and retry if need be 
 	  if ( ! -s ${TMP_DIR}/${RASTR}${DESTR}.usnob ) then
-		setenv SIZE_X `${MYBIN}gethead $inpfile NAXIS1`  # equivalent to CCDXIMSI
-		setenv SIZE_Y `${MYBIN}gethead $inpfile NAXIS2`  # equivalent to CCDYIMSI
-		setenv PIXSC  `${MYBIN}gethead $inpfile CCDSCALE`
-
-		setenv TRUE_SIZE_X  10.0    # arcmin. Box diamter. (Checked it is diameter 2009-12-16)
-		setenv TRUE_SIZE_Y  10.0    # arcmin. Box diamter
 
 		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Retrieving USNOB file according to the following:" >> $LOGFILE
 		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Center RA: $RA (${INPUT_RA})" >> $LOGFILE
 		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Center DEC: $DE (${INPUT_DEC})" >> $LOGFILE
 		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : X Size (minutes): $TRUE_SIZE_X" >> $LOGFILE
-		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Y Size (minutes): $TRUE_SIZE_Y" >> $LOGFILE
 
 		setenv USNOB_STATUS 1
 		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Get USNOB from local copy" >> $LOGFILE
@@ -1420,19 +1464,20 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	    /bin/touch ${TMP_DIR}/${RASTR}${DESTR}_usnob.starb
 	  endif
 	  ####### Start Cropping #######
+	  # Keep only stars that actually fall on the CCD. 
 	  if ( ! -s ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ) then
 	    if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : No cropped catalogue: start cropping USNOB file..." >> $LOGFILE
-	    setenv CROP_SIZE_X  6.0    # arcmin
-	    setenv CROP_SIZE_Y  6.0    # arcmin
 
-	    if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null" >> $LOGFILE
-	    ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null
+	    if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${TRUE_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null" >> $LOGFILE
+	    if ($DEBUG) /bin/echo "`now_date_string` : $procname : Pre crop there are `wc -l ${TMP_DIR}/${RASTR}${DESTR}.usnob` lines in ${TMP_DIR}/${RASTR}${DESTR}.usnob " >> $LOGFILE
+	    ${MYBIN}crop_usnob ${inpfile} ${TMP_DIR}/${RASTR}${DESTR}.usnob ${TRUE_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob ${TMP_DIR}/usnob_nominal.dat >& /dev/null
 	    setenv STATUS $status
 	    if ( ${STATUS} ) then
 		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Cropping USNOB catalogue failed: use the entire catalogue." >> $LOGFILE
-		/bin/cp -f ${TMP_DIR}/${RASTR}${DESTR}.usnob ${CROP_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob
+		/bin/cp -f ${TMP_DIR}/${RASTR}${DESTR}.usnob ${TRUE_SIZE_X} ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob
 	    else
-		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : USNOB catalogue cropped to ${CROP_SIZE_X} : ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob." >> $LOGFILE
+		if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : USNOB catalogue cropped to ${TRUE_SIZE_X} : ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob." >> $LOGFILE
+	        if ($DEBUG) /bin/echo "`now_date_string` : $procname : Post crop there are `wc -l ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob` lines in ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob " >> $LOGFILE
 	    endif
 	  else
 	    if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Cropped USNOB catalogue ${TMP_DIR}/crop_${RASTR}${DESTR}.usnob already available." >> $LOGFILE
@@ -1880,7 +1925,8 @@ if( (($MATCHFRAC < ${THR_FRACTION}) && ($NMATCH < $THR_ABSOLUTE) ) || ($NMATCH <
   set THIS_CAT_FAILED = 1
 endif
 
-if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
+#if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
+if(($SCALECHANGE_1 >= 20) || ($SCALECHANGE_2 >= 20)) then 
   /bin/echo "`now_date_string` : $procname : $inpfile : CD matrix suggests plate scale changed by more than 1.0%. Bad."
   set ASFIT_STATUS = 1
   set THIS_CAT_FAILED = 1
