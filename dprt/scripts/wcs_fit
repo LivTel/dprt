@@ -19,30 +19,37 @@
 # 40 : Failed to make clean backup copy of input file
 # 99 : Fit failed but successfully wrote a NOMINAL WCS from the TCS
 # ----------------------------------------
+#
 
+set procname = wcs_fit
+alias now_date_string "/bin/date +'%Y-%m-%dT%H:%M:%S %Z'"
 
 # First set the paths
 # This includes the location of the tmp dir where logs will be written so it has 
 # to be before any logs get written
-if ( -d /home/dev/tmp ) then
-	set base_tmp_dir = /home/dev/tmp
+#
+if ( "`hostname -s`" == "lt-qc" ) then
+  set TMP_DIR = /data/temp/wcs
+else if ( -d /home/dev/tmp ) then
+	set TMP_DIR = /home/dev/tmp/wcs
 else if ( -d /icc/tmp ) then
-	set base_tmp_dir = /icc/tmp
+	set TMP_DIR = /icc/tmp/wcs
 else if ( -d /dprt/tmp ) then
-	set base_tmp_dir = /dprt/tmp
+	set TMP_DIR = /dprt/tmp/wcs
 else if ( -d /data/Dprt ) then
-	set base_tmp_dir = /data/Dprt
+	set TMP_DIR = /data/Dprt/wcs
 else
-	/bin/echo "`now_date_string` : $procname : Failed to find a base tmp dir." 
+	/bin/echo "`now_date_string` : $procname : Failed to find tmp dir." 
 	exit 27
 endif
-set TMP_DIR = ${base_tmp_dir}/wcs
 
 if ( -d /icc/wcs_fit/bin/ ) then
+    # this is on datared
     setenv MYBIN /icc/wcs_fit/bin/
 else if ( -d /dprt/wcs_fit/bin/ ) then
     setenv MYBIN /dprt/wcs_fit/bin/
 else if ( -d /usr/local/bin/wcs/ ) then
+    # this is in liverpool, lt-archive, lt-qc
     setenv MYBIN /usr/local/bin/wcs/
 else
 	/bin/echo "`now_date_string` : $procname : Failed to find a binary dir." 
@@ -58,8 +65,6 @@ setenv PATH ${PATH}:${MYBIN}
 # End of setting paths
 
 
-set procname = wcs_fit
-alias now_date_string "/bin/date +'%Y-%m-%dT%H:%M:%S %Z'"
 
 # The directory where the local catalogue copies are stored
 setenv USNOB_LOCAL_DIR /mnt/catalogues/usnob1/usnob1
