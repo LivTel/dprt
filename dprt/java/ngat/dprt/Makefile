@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.25 2013-09-04 11:04:08 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.26 2014-08-01 09:59:36 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -22,10 +22,11 @@ CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properti
 		spectrograph.dprt.properties nuview1.dprt.properties ratcam1.dprt.properties \
 		frodospec1.dprt.properties estar6.dprt.properties ringo1.dprt.properties \
 		o1.dprt.properties rise.dprt.properties thor.dprt.properties \
-		datared.ratcam.dprt.properties datared.o.dprt.properties ioi1.dprt.properties
+		datared.ratcam.dprt.properties datared.o.dprt.properties ioi1.dprt.properties \
+		sprat1.dprt.properties 
 CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
 
-DIRS 		= ccs scs supircam ftspec grope frodospec o rise thor ioi
+DIRS 		= ccs scs supircam ftspec grope frodospec o rise thor ioi sprat
 
 top: $(OBJS) config
 	@for i in $(DIRS); \
@@ -80,6 +81,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.25  2013/09/04 11:04:08  cjm
+# Added ioi1.
+#
 # Revision 0.24  2011/11/23 11:08:47  cjm
 # No change.
 #
