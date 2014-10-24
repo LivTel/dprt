@@ -30,6 +30,8 @@ alias now_date_string "/bin/date +'%Y-%m-%dT%H:%M:%S %Z'"
 #
 if ( "`hostname -s`" == "lt-qc" ) then
   set TMP_DIR = /data/temp/wcs
+else if ( "`hostname -s`" == "ioilinux"  || "`hostname -s`" == "i1" ) then
+  set TMP_DIR = /icc/tmp/wcs
 else if ( -d /home/dev/tmp ) then
 	set TMP_DIR = /home/dev/tmp/wcs
 else if ( -d /icc/tmp ) then
@@ -112,6 +114,10 @@ endif
 set ASFIT_STATUS = 0  # 0 if the astrometric fit is OK, 1 when it fails
 set NOMINAL_NEEDED = 0 # if this is set, a nominal WCS needs creating
 
+set MATCHFRAC = 0	# Fraction of the stars in the frame that have been successfully matched to a catalogue
+set NMATCH = 0		# Number of the stars in the frame that have been successfully matched to a catalogue
+set SEEING = 999	# A dummy value
+
 #
 # USNOB configuration
 # Where are the local files?
@@ -154,14 +160,14 @@ set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth att
 # Tests show that so long as the ROT configs in the RCS are correct, any WCS rotations > 2 are very unlikely to be correct.
 # Conversely, rotations < 2 are not a good indication that it is correct. I.e, this only ever excludes fits, never includes them
 # Maybe use more than 2 to allow for RCS config imperfections.
-set MAX_ROT_CHANGE 	= 3	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
-set MAX_ROT_CHANGE 	= 8	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
+set MAX_ROT_CHANGE 	= 4	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
 set MAX_POINT_CHANGE 	= 130	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 #set MAX_POINT_CHANGE 	= 60	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
-#set max_fit_residual    = "4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
+#set max_fit_residual    = "5"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
 set MAX_ELONGATION	= 3	# SExtractor sources with major:minor axis ratios greater than this will be rejected
+set MAX_SCALECHANGE	= 2	# Pixscale of fit must be within $MAX_SCALECHANGE per cent of the default header value
 
 
 
@@ -467,7 +473,31 @@ switch ( $INSTRUMENT )
 	#cp $inpfile ${inpfile}.bak
 	#
 	breaksw
-
+    case 'SPRAT' :
+	# Use _ instead of minus sign -
+        # APERTUREX,APERTUREY not curerntly being used. They are used to convert ROTCENT to POICENT,
+        # but we now actually have POICENT in the headers, so they are no longer required.
+	set APERTUREX = 0
+	set APERTUREY = 0
+	if ( $BINNING == 2 ) then
+	  set do_fixpix = 0
+	  set fixpix_param = ""
+	  set DETECT_MINAREA = 9
+	else if ( $BINNING == 1 ) then
+	  set do_fixpix = 0
+	  set fixpix_param = ""
+	  set DETECT_MINAREA = 18
+        else
+          if ( $DEBUG ) /bin/echo "`now_date_string` : $procname : $inpfile : Unsupported SPRAT binning." >> $LOGFILE
+          set DETECT_MINAREA = 9
+	endif
+	set CAT_SEARCH_RADIUS = 3
+	#
+	#set NEEDS_FLIP = "-l -r 180 "		# Tells imwcs to flip the image top-bottom 
+	set NEEDS_FLIP = ""		
+	#
+	cp $inpfile ${inpfile}.bak
+	breaksw
     default :
 	echo "`now_date_string` : $procname : $inpfile : Instrument not recognized. " | tee $LOGFILE
 	exit 12
@@ -477,10 +507,10 @@ endsw
 set CAT_SEARCH_RADIUS_SEC = `echo "3k $CAT_SEARCH_RADIUS 60 * p" | ${dc_bin} `
 
 
-# Currently no need to flip images in here and generally we do not want to. We would ratehr this
-# were done outside the WCS fit so that the data are correct in teh first place. However we
+# Currently no need to flip images in here and generally we do not want to. We would rather this
+# were done outside the WCS fit so that the data are correct in the first place. However we
 # will hang on to this section of code anyway since it is potentially useful when testing new
-# instruments to have teh ability available to quickly flip the image
+# instruments to have the ability available to quickly flip the image
 ###################################################################
 # From Jan 27, 2005 Flipping of FTN images is no longer required! 
 ###################################################################
@@ -681,82 +711,74 @@ if ( ${NOMINAL_NEEDED} == 0 ) then
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : MAG_BEST_FIELD: $MAG_BEST_FIELD" >> $LOGFILE
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : FWHM_IMAGE: $FWHM_IMAGE" >> $LOGFILE
 else
-  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Some sort of error in SExtractor execution of output formatting" >> $LOGFILE
-  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile :   SEx_failed = $SEx_failed " >> $LOGFILE
-  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile :   too_few_stars = $too_few_stars " >> $LOGFILE
-  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile :   SEx_format_error = $SEx_format_error " >> $LOGFILE
+  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Error in SExtractor execution of output formatting. Detected error:" >> $LOGFILE
+  if ($DEBUG && $SEx_failed) /bin/echo "`now_date_string` : ${procname} : $inpfile :   SEx_failed : No source catalogue to use" >> $LOGFILE
+  if ($DEBUG && $too_few_stars) /bin/echo "`now_date_string` : ${procname} : $inpfile :   too_few_stars : Empty catalogue " >> $LOGFILE
+  if ($DEBUG && $SEx_format_error) /bin/echo "`now_date_string` : ${procname} : $inpfile :   SEx_format_error : Catalogue format error" >> $LOGFILE
 endif
 
-
+# We need pixscale whether using nominal WCS or running a proper fit
 # Change FITS keywords from LT standards to those used by wcstools
 # We also need the value of PIXSCALE in order to test the SEx catalogue contents are sane
 # If not set yet, PIXSCALE is set now
 set PIXSCALE = `${MYBIN}gethead -u $inpfile PIXSCALE `
 if ( "$PIXSCALE" == "___" ) then
-	set PIXSCALE = `${MYBIN}gethead -u $inpfile CCDSCALE `
-	if ( "$PIXSCALE" == "___" ) then
-		/bin/echo `now_date_string`": ${procname} : Neither PIXSCALE nor CCDSCALE keywords defined. " | tee $LOGFILE
-		/bin/echo `now_date_string`": ${procname} : Given this, we cannot even create a nominal WCS. EXIT." | tee $LOGFILE
-		exit 10
-	endif
-	$FITS_AKVC $inpfile PIXSCALE DOUBLE ${PIXSCALE} "arcsec/pixel" "Scale of CCD pixel on sky"
+  set PIXSCALE = `${MYBIN}gethead -u $inpfile CCDSCALE `
+  if ( "$PIXSCALE" == "___" ) then
+    /bin/echo `now_date_string`": ${procname} : Neither PIXSCALE nor CCDSCALE keywords defined. " | tee $LOGFILE
+    /bin/echo `now_date_string`": ${procname} : Given this, we cannot even create a nominal WCS. EXIT." | tee $LOGFILE
+    exit 10
+  endif
+  $FITS_AKVC $inpfile PIXSCALE DOUBLE ${PIXSCALE} "arcsec/pixel" "Scale of CCD pixel on sky"
 endif
 set PIXSCALE_DEGREES = `/bin/echo "10 k $PIXSCALE 3600 / p" | ${dc_bin}`
-#
-# Check the seeing parameter in the header and use this to exclude non-stellar sources from the SExtractor output
-# The various seeing parameters in the FITS header are
-# 	L1_SEEING	The pipeline's measurement
-#	ESTSEE		The scheduler's best guess of what you should achieve in this exposure
-#	SCHEDSEE	The value used by the scheduler to choose this group. (Scaled to r-band zenith)
-#	PREDSEE		[Deprecated] Same as SCHEDSEE, before we introduced the zenith/wavelength scaling
-#
-
-# Trap cases of either a missing value of a dummy value of 99.9
-set ESTSEE = `${MYBIN}gethead -u $inpfile ESTSEE `
-if ( "$ESTSEE" == "___" ) set ESTSEE = 0
-if ( "$ESTSEE" == "99.9000000" ) set ESTSEE = 0
 
 
-set L1SEEING = `${MYBIN}gethead -u $inpfile L1SEEING `
-if ( "$L1SEEING" == "___" ) set L1SEEING = 0
-if ( "$L1SEEING" ==  "999." ) set L1SEEING = 0
-set L1SEEING  = `/bin/echo "3 k $L1SEEING $PIXSCALE * p" | ${dc_bin} `
+if ( $NOMINAL_NEEDED == 0 ) then
+  #
+  # Check the seeing parameter in the header and use this to exclude non-stellar sources from the SExtractor output
+  # The various seeing parameters in the FITS header are
+  # 	L1_SEEING	The pipeline's measurement
+  #	ESTSEE		The scheduler's best guess of what you should achieve in this exposure
+  #	SCHEDSEE	The value used by the scheduler to choose this group. (Scaled to r-band zenith)
+  #	PREDSEE		[Deprecated] Same as SCHEDSEE, before we introduced the zenith/wavelength scaling
+  #
+  
+  # Trap cases of either a missing value of a dummy value of 99.9
+  set ESTSEE = `${MYBIN}gethead -u $inpfile ESTSEE `
+  if ( "$ESTSEE" == "___" ) set ESTSEE = 0
+  if ( "$ESTSEE" == "99.9000000" ) set ESTSEE = 0
+  
+  
+  set L1SEEING = `${MYBIN}gethead -u $inpfile L1SEEING `
+  if ( "$L1SEEING" == "___" ) set L1SEEING = 0
+  if ( "$L1SEEING" ==  "999." ) set L1SEEING = 0
+  set L1SEEING  = `/bin/echo "3 k $L1SEEING $PIXSCALE * p" | ${dc_bin} `
+  
+  # If both values are missing, arbitrarily use 2arcsec
+  # If both are present, use the average
+  # If one is missing, just use the other
+  if (   `echo "($ESTSEE == 0)" | ${bc_bin}` && `echo "($L1SEEING == 0)" | ${bc_bin}` ) then
+    set SEEING = 2
+    if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to default of 2 arcsec"  >> $LOGFILE
+  else if ( `echo "($ESTSEE != 0)" | ${bc_bin}` && `echo "($L1SEEING != 0)" | ${bc_bin}` ) then
+    set SEEING = `echo "1k $ESTSEE $L1SEEING + 2 / p " | ${dc_bin} `
+    if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to average of ESTSEE and L1SEEING ($ESTSEE, $L1SEEING) " >> $LOGFILE
+  else
+    # Get here is one of them is zero, sothe sum of the two equals whichever is non-zero
+    set SEEING = `echo "1k $ESTSEE $L1SEEING + p " | ${dc_bin} `
+    if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to one of ESTSEE($ESTSEE) or L1SEEING($L1SEEING) " >> $LOGFILE
+  endif
 
-# If both values are missing, arbitrarily use 2arcsec
-# If both are present, use the average
-# If one is missing, just use the other
-if (($ESTSEE == 0) && ($L1SEEING == 0)) then
-  set SEEING = 2
-  if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to default of 2 arcsec"  >> $LOGFILE
-else if (($ESTSEE != 0) && ($L1SEEING != 0)) then
-  set SEEING = `echo "1k $ESTSEE $L1SEEING + 2 / p " | ${dc_bin} `
-  if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to average of ESTSEE and L1SEEING ($ESTSEE, $L1SEEING) " >> $LOGFILE
-else
-  # Get here is one of them is zero, sothe sum of the two equals whichever is non-zero
-  set SEEING = `echo "1k $ESTSEE $L1SEEING + p " | ${dc_bin} `
-  if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : Seeing set to one of ESTSEE($ESTSEE) or L1SEEING($L1SEEING) " >> $LOGFILE
+  # Now we have one of three possible values:
+  #   ESTSEE in arcsec
+  #   L1SEEING converted from pixels to arcsec
+  #   2 (arcsec)
+  # and want to convert these to pixels
+  set SEEING_PIX = `/bin/echo "3 k $SEEING $PIXSCALE / p" | ${dc_bin}`
+  if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : SEEING_PIX = $SEEING_PIX " >> $LOGFILE
+
 endif
-
-
-
-#set SEEING = `${MYBIN}gethead -u $inpfile ESTSEE `
-#if ( "$SEEING" == "___" ) then
-#  	set SEEING = `${MYBIN}gethead -u $inpfile L1SEEING `
-#  	if ( "$SEEING" == "___" ) then
-#    		# Arbitrarily set 2 arcsec
-#    		set SEEING = 2 
-#  	else
-#    		# Convert L1_SEEING (pixels) into arcsec
-#    		set SEEING = `/bin/echo "3 k $SEEING $PIXSCALE * p" | ${dc_bin} `
-#  	endif
-#endif  
-# Now we have one of three possible values:
-#   ESTSEE in arcsec
-#   L1SEEING converted from pixels to arcsec
-#   2 (arcsec)
-# and want to convert these to pixels
-set SEEING_PIX = `/bin/echo "3 k $SEEING $PIXSCALE / p" | ${dc_bin}`
-if ($DEBUG) /bin/echo `now_date_string`" : $procname : $inpfile : SEEING_PIX = $SEEING_PIX " >> $LOGFILE
 
 #
 # Strip out just the $MAX_N_STARS best stars from *.dat
@@ -780,7 +802,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
   # setenv is used instead of set because it allows us to use ENVIRON in the following awk
   setenv FWHM_IMAGE_LIMIT `/bin/echo "2.5 $SEEING_PIX * 1 + 0 k 1 / p" | ${dc_bin}`
   set THREE_ARCSEC_PIX = `/bin/echo "0 k 3 $PIXSCALE / 1 + p" | ${dc_bin}`
-  if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Seeing from image = $FWHM_IMAGE_LIMIT. THREE_ARCSEC_PIX = $THREE_ARCSEC_PIX. " >> $LOGFILE
+  if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : 2.5x seeing from image = $FWHM_IMAGE_LIMIT. THREE_ARCSEC_PIX = $THREE_ARCSEC_PIX. " >> $LOGFILE
   if ( $FWHM_IMAGE_LIMIT < $THREE_ARCSEC_PIX ) setenv FWHM_IMAGE_LIMIT $THREE_ARCSEC_PIX
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : FWHM_IMAGE_LIMIT = $FWHM_IMAGE_LIMIT" >> $LOGFILE
 
@@ -914,7 +936,7 @@ if ("$SYS" == "FK4") then
   #echo $RA $DE J2000
 endif
 # $RA (HH:MM:SS) -> $INPUT_RA (in degrees)
-# This was written on linux but does not work on the solaris dc which is missing teh r operator
+# This was written on linux but does not work on the solaris dc which is missing the r operator
 # Retained here for reference since it is so much more concise than the solaris version.
 #set INPUT_RA = 0`/bin/echo $RA | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 240 / r 4 / + r 15 * + p"}' | ${dc_bin} `
 set INPUT_RA_H = `/bin/echo $RA | ${awk_bin} -F : '{print $1}'`
@@ -924,9 +946,6 @@ set INPUT_RA = 0`/bin/echo "scale=3; ((${INPUT_RA_H} * 15) + (${INPUT_RA_M} / 4)
 # $DE -> $INPUT_DEC (in degrees)
 # This next line doesn't work, Solaris dc does not support the 'r' operator (inverts top 2 elements on stack)
 # set tmp_var = `/bin/echo $DE | /bin/sed 's/[+-]//' | ${awk_bin} -F : '{print "3 k ",$1,$2,$3," 3600 / r 60 / + r + p"}' | ${dc_bin} `
-#set INPUT_DEC_D = `/bin/echo $DE | ${awk_bin} -F : '{print $1}' | /bin/sed 's/[+-]//'`
-#set INPUT_DEC_M = `/bin/echo $DE | ${awk_bin} -F : '{print $2}'`
-#set INPUT_DEC_S = `/bin/echo $DE | ${awk_bin} -F : '{print $3}'`
 set INPUT_DEC_D = `/bin/echo $DE | ${awk_bin} -F : '{printf("%02d",$1)}' | /bin/sed 's/[+-]//'`
 set INPUT_DEC_M = `/bin/echo $DE | ${awk_bin} -F : '{printf("%02d",$2)}'`
 set INPUT_DEC_S = `/bin/echo $DE | ${awk_bin} -F : '{printf("%05.2f",$3)}'`
@@ -1217,7 +1236,7 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 		/bin/echo "----------	-----------	----" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_nomad.starb
 		# NOMAD catalogue format:
 		#NOMAD1.0   |BCTYM|   RA  (J2000) Dec     r  sRA  sDE| Ep.RA  EpDec|    pmRA     pmDE  spRA  spDE| Bmag.r  Vmag.r  Rmag.r| Jmag   Hmag   Kmag |R| ;     r(")
-		# Strip out teh numbers we want in a couple of steps.
+		# Strip out the numbers we want in a couple of steps.
 		# First use awk with FS = | to grab the RADEC and magnitudes sections
 		# Next strip out the alphabetic flags with tr
 		# Finally another awk can now use normal white space delimiters
@@ -1412,7 +1431,7 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  # get_local_usnob.csh uses search box diameter, not radius
 	  set TRUE_SIZE_X = `echo "1k $CAT_SEARCH_RADIUS 2 * p" | dc `
 
-	  # In the unlikely event thhat you have run a WCS for one camera and then try a WCS for the same field with a larger
+	  # In the unlikely event that you have run a WCS for one camera and then try a WCS for the same field with a larger
 	  # camera you could end up using the catalogue which was created for the small camera and the fit failing.
 	  # Therefore we will check the cached usnob header make sure the catalogue is for a camera
 	  # with the correct FoV, $CAT_SEARCH_RADIUS 
@@ -1594,10 +1613,9 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	# Throughout the main body of the script, we only need CROTA and INPUT_ROT for the actual fitting
 	# Change sign to ROTSKYPA: CROTA is measured in the opposite sense to ROTSKYPA 
 	set CROTA = `/bin/echo "$ROTSKYPA" | ${awk_bin} '{print -$1}'`
-	#set CROTA = `/bin/echo "$ROTSKYPA" | ${awk_bin} '{print $1}'`
 	set INPUT_ROT = $CROTA
 
-	# Before calling imwcs, write a first guess nominal WCS into teh FITS header based on the TCS parameters.
+	# Before calling imwcs, write a first guess nominal WCS into the FITS header based on the TCS parameters.
 	# imwcs works a lot better if it has a first guess to start from
 	#
 	$FITS_AKVC $inpfile CTYPE1 STRING "RA---TAN"            ""      "First guess nominal WCS"
@@ -1664,7 +1682,13 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	    set N_FIT_PARAMS = -4
 	  endif
 
-	  set FIT_OPTIONS = " -q is "
+	  # Up until Sept 2014 we have been using "-q i" though not for any good reason and I have never been 
+	  # convinced that it helped.
+	  #set FIT_OPTIONS = " -q is "
+	  # The "-q i" option seems to upset fits on WCS so it has been removed. It has been removed for everything 
+	  # and we shall have to see if causes failures on other instruments, but I do not expect it to.
+	  # From 2014-09-12 onwards we have "-q p"
+	  set FIT_OPTIONS = " -q p "
 
 	  # S sets how many more catalogue stars to use compared to the number of reference stars we have in the image.
 	  # For example, the default we usually use is 2 so that for 10 stars in the image, imwcs will only consider
@@ -1683,6 +1707,7 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  set iter_count = 0
 	  while ( $iter_count < 4 ) 
 	    @ iter_count++    
+	    if ($DEBUG) echo "`now_date_string` : ${procname} : $inpfile : Iterating fit parameters. Attempt $iter_count" >> $LOGFILE
 
 	  set WCS_WAS_RUN = 1
 	  set IMWCS_FAILED = 0
@@ -1703,7 +1728,7 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
       set NMATCH = `${awk_bin} '/nmatch=/ {nmatch=$3}; END {print nmatch}' ${TMP_DIR}/${inpfile:r:t}.wcsfit`
       set NSTARS = `${awk_bin} '/nmatch=/ {nstars=$5}; END {print nstars}' ${TMP_DIR}/${inpfile:r:t}.wcsfit`
       set MATCHFRAC = `echo "$NMATCH * 100 / $NSTARS" | ${bc_bin}`
-      if ( $DEBUG )  /bin/echo "`now_date_string` : ${procname} : $inpfile : Matched fraction = $MATCHFRAC" >> $LOGFILE
+      if ( $DEBUG )  /bin/echo "`now_date_string` : ${procname} : $inpfile : Matched fraction = $MATCHFRAC ($NMATCH of $NSTARS)" >> $LOGFILE
     endif
     #Conditions to be satisfied for rejecting the fit
     if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : NSTARS NMATCH MATCHFRAC IMWCS_S ROTSKYPA $NSTARS $NMATCH $MATCHFRAC $IMWCS_S $ROTSKYPA" >> $LOGFILE
@@ -1715,6 +1740,8 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 #      set ROTSKYPA = `echo $ROTSKYPA | sed 's/-/_/'`
 #      set ROTSKYPA = `echo "$ROTSKYPA 90 + p" | ${dc_bin} `
     else
+      if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Fit accepted as plausible. Proceed." >> $LOGFILE
+      if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : IMWCS_FAILED=$IMWCS_FAILED NMATCH=$NMATCH THR_ABSOLUTE=$THR_ABSOLUTE MATCHFRAC=$MATCHFRAC  THR_FRACTION=$THR_FRACTION NMATCH=$NMATCH MIN_N_STARS=$MIN_N_STARS" >> $LOGFILE
       set iter_count = 5 # Fit seems OK, so stop the looping
     endif
   end		# end of the while() loop
@@ -1728,12 +1755,8 @@ set fittedfile = ${inpfile}.wcs
 ########### Sanity checks on the results of the Astrometric Fit ###########
 
 # First initialize all the sanity check parameters
-set MATCHFRAC = 0
-set NMATCH = 0
 set SCALECHANGE_1 = 999
 set SCALECHANGE_2 = 999
-set FLT_SCALECHANGE_1 = 999
-set FLT_SCALECHANGE_2 = 999
 set resid_test = 999
 set fit_residual = 999
 set DEL_POINT = 999
@@ -1785,18 +1808,6 @@ else
       /bin/echo "`now_date_string` MJD undefined"
     endif
 
-    #Below:  Further Sanity checks on the WCS
-    set NMATCH = `${awk_bin} '/nmatch=/ {nmatch=$3}; END {print nmatch}' ${TMP_DIR}/${inpfile:r:t}.wcsfit`
-    if ( "$NMATCH" == "" ) set NMATCH = 0
-
-    set MATCHFRAC = `/bin/echo "$NMATCH * 100 / $N_STARS_TAKEN" | ${bc_bin}`
-    if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Matched fraction = $MATCHFRAC ( $NMATCH of $N_STARS_TAKEN ) " >> $LOGFILE
-    #Conditions to be satisfied for rejecting the fit
-    #XXX if(($MATCHFRAC < ${THR_FRACTION}) || ($NMATCH < $MIN_N_STARS)) then
-    #XXX     /bin/echo "`now_date_string` : $procname : $inpfile : Cat $REFCATNAME ($REFCAT). Less than ${THR_FRACTION}% of reference stars matched or less than ${MIN_N_STARS}"
-    #XXX     set ASFIT_STATUS = 1
-    #XXX     set THIS_CAT_FAILED = 1
-    #XXX endif
   endif
 
 # Make sure PIXSCALE is defined in the fitted image
@@ -1822,23 +1833,20 @@ else
     set CD2_1 = `/bin/echo "$CD2_1 * 3600" | ${bc_bin} -l`
     set CD2_2 = `${MYBIN}gethead ${TMP_DIR}/${inpfile:r:t}_temp.fits CD2_2`
     set CD2_2 = `/bin/echo "$CD2_2 * 3600" | ${bc_bin} -l`
-    if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : PIXSCALE:  $PIXSCALE" >> $LOGFILE
-    if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : CD1_1   CD1_2:  $CD1_1  $CD1_2" >> $LOGFILE
-    if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : CD2_1   CD2_2:  $CD2_1  $CD2_2" >> $LOGFILE
-    set SCALECHANGE_1 = `/bin/echo "(sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| ${bc_bin} -l| /bin/sed 's/\..*//g'`
-    set SCALECHANGE_2 = `/bin/echo "(sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 1000"| ${bc_bin} -l| /bin/sed 's/\..*//g'`
+    if ($DEBUG) then
+	/bin/echo "`now_date_string` : $procname : $inpfile : Header PIXSCALE:  $PIXSCALE" >> $LOGFILE
+	set cd1_scale = `/bin/echo "sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 )" | ${bc_bin} -l `
+	set cd2_scale = `/bin/echo "sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 )" | ${bc_bin} -l `
+	/bin/echo "`now_date_string` : $procname : $inpfile : CD1_1   CD1_2:  $CD1_1  $CD1_2 (which gives $cd1_scale)" >> $LOGFILE
+        /bin/echo "`now_date_string` : $procname : $inpfile : CD2_1   CD2_2:  $CD2_1  $CD2_2 (which gives $cd2_scale)" >> $LOGFILE
+    endif
+    set SCALECHANGE_1 = `/bin/echo "define abs(n){if(n>=0)return(n);return(-n)}; scale=3; abs(sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 ) - $PIXSCALE ) / $PIXSCALE "| ${bc_bin} -l`
+    set SCALECHANGE_2 = `/bin/echo "define abs(n){if(n>=0)return(n);return(-n)}; scale=3; abs(sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 ) - $PIXSCALE ) / $PIXSCALE "| ${bc_bin} -l`
     if ("$SCALECHANGE_1" == "") set SCALECHANGE_1 = 0
     if ("$SCALECHANGE_2" == "") set SCALECHANGE_2 = 0
     if ("$SCALECHANGE_1" == "-") set SCALECHANGE_1 = 0
     if ("$SCALECHANGE_2" == "-") set SCALECHANGE_2 = 0
-    if ($DEBUG) /bin/echo "`now_date_string` $procname : $inpfile : Scalechange 1: $SCALECHANGE_1 (0.1%)  Scalechange 2: $SCALECHANGE_2 (0.1%)" >> $LOGFILE
-    set FLT_SCALECHANGE_1 = `/bin/echo "scale=3; (sqrt( $CD1_1 ^ 2 + $CD2_1 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 100"| ${bc_bin} -l`
-    set FLT_SCALECHANGE_2 = `/bin/echo "scale=3; (sqrt( $CD1_2 ^ 2 + $CD2_2 ^ 2 ) - $PIXSCALE ) / $PIXSCALE * 100"| ${bc_bin} -l`
-    #XXX if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
-    #XXX     /bin/echo "`now_date_string` : $procname : $inpfile : CD matrix suggests plate scale changed by more than 1.0%. Bad."
-    #XXX   set ASFIT_STATUS = 1
-    #XXX   set THIS_CAT_FAILED = 1
-    #XXX endif
+    if ($DEBUG) /bin/echo "`now_date_string` $procname : $inpfile : Scalechange 1: $SCALECHANGE_1 (%)  Scalechange 2: $SCALECHANGE_2 (%)" >> $LOGFILE
   endif
 
   # We are now happy this fit looks sane so 
@@ -1858,10 +1866,6 @@ if ( $WCS_WAS_RUN ) then
   $FITS_AKVC ${fittedfile} WCSRDRES STRING "$RDRESID" "arcsec" "WCS fitting residuals, mean and sigma"
   set fit_residual=`/bin/echo $RDRESID | /usr/bin/cut -d"/" -f1`
   set resid_test=`/bin/echo "(${fit_residual} > ${max_fit_residual})" | ${bc_bin}`
-  #XXX if ( ${resid_test} == 1 ) then
-  #XXX   /bin/echo "`now_date_string` : $procname : $inpfile : Fitting residuals ${fit_residual}>${max_fit_residual} arcsec. Fit suspect and will not be used."
-  #XXX   set THIS_CAT_FAILED = 1
-  #XXX endif
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Input RA,Dec, Rot = $INPUT_RA $INPUT_DEC $INPUT_ROT " >> $LOGFILE
   set OUTPUT_RA  = `${MYBIN}gethead ${fittedfile} CRVAL1`
   set OUTPUT_DEC  = `${MYBIN}gethead ${fittedfile} CRVAL2`
@@ -1893,10 +1897,6 @@ if ( $WCS_WAS_RUN ) then
   $FITS_AKVC ${fittedfile} WCSDELPO DOUBLE $DEL_POINT "arcsec"  "Shift of fitted WCS w.r.t. nominal"
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Pointing change : $DEL_POINT arcsec" >> $LOGFILE
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Rot change:    $DEL_ROT deg" >> $LOGFILE
-  #XXX if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
-  #XXX   /bin/echo "`now_date_string` : $procname : $inpfile : Pointing change too large ($DEL_POINT >= $MAX_POINT_CHANGE)."
-  #XXX   set THIS_CAT_FAILED  = 1
-  #XXX endif
 
   # Convert DEL_ROT to an abs(integer)
   # This is convoluted! Strip the minus sign. Convert to integer. Convert to range -180 -> +180. Strip the minus sign. Test against limit
@@ -1905,10 +1905,6 @@ if ( $WCS_WAS_RUN ) then
   set TEST_ROT = `/bin/echo "0 k $TEST_ROT 1 / p " | ${dc_bin} `  
   if ( $TEST_ROT > 180 ) @ TEST_ROT -= 360 
   set TEST_ROT = `/bin/echo $TEST_ROT | /bin/sed 's/-//'`
-  #XXX if ( $TEST_ROT >= $MAX_ROT_CHANGE ) then
-  #XXX   /bin/echo "`now_date_string` : $procname : $inpfile : Rotator change too large ($TEST_ROT >= $MAX_ROT_CHANGE)."
-  #XXX   set THIS_CAT_FAILED  = 1
-  #XXX endif
 
 
 else
@@ -1925,14 +1921,15 @@ endif
 #
 
 if( (($MATCHFRAC < ${THR_FRACTION}) && ($NMATCH < $THR_ABSOLUTE) ) || ($NMATCH < $MIN_N_STARS)) then
+  if ( $DEBUG ) /bin/echo "`now_date_string` : ${procname} : $inpfile : NOMINAL_NEEDED=$NOMINAL_NEEDED MATCHFRAC=$MATCHFRAC THR_FRACTION=$THR_FRACTION NMATCH=$NMATCH THR_ABSOLUTE=$THR_ABSOLUTE NMATCH=$NMATCH MIN_N_STARS=$MIN_N_STARS" >> $LOGFILE
   /bin/echo "`now_date_string` : $procname : $inpfile : Cat $REFCATNAME ($REFCAT). Less than ${THR_FRACTION}% of reference stars matched or less than ${MIN_N_STARS}"
   set ASFIT_STATUS = 1
   set THIS_CAT_FAILED = 1
 endif
 
-#if(($SCALECHANGE_1 >= 10) || ($SCALECHANGE_2 >= 10)) then 
-if(($SCALECHANGE_1 >= 20) || ($SCALECHANGE_2 >= 20)) then 
-  /bin/echo "`now_date_string` : $procname : $inpfile : CD matrix suggests plate scale changed by more than 1.0%. Bad."
+# In earlier versions SCALECHANGE_[12] were integers. Since swapping to bc to perform the comparison instead of the shell builtin, they are now reals
+if( `echo "($SCALECHANGE_1 >= $MAX_SCALECHANGE)" | ${bc_bin}` || `echo "($SCALECHANGE_2 >= $MAX_SCALECHANGE)" | ${bc_bin}`) then 
+  /bin/echo "`now_date_string` : $procname : $inpfile : CD matrix suggests plate scale changed by more than $MAX_SCALECHANGE %. Bad."
   set ASFIT_STATUS = 1
   set THIS_CAT_FAILED = 1
 endif
@@ -1947,19 +1944,20 @@ if ( ${resid_test} == 1 ) then
 #  endif
 endif
 
+# DEL_POINT still an INT. Might be more elegant long term to make it a real like SCALECHANGE_[12]. Need to use bc for the comparison instead of shell builtin. 
 if ( $DEL_POINT >= $MAX_POINT_CHANGE ) then
   /bin/echo "`now_date_string` : $procname : $inpfile : Pointing change too large ($DEL_POINT >= $MAX_POINT_CHANGE)."
   set THIS_CAT_FAILED  = 1
 endif
 
+# TEST_ROT still an INT. Might be more elegant long term to make it a real like SCALECHANGE_[12]. Need to use bc for the comparison instead of shell builtin.
+# It is complicated by the circularity of angles mod(360)
 if ( $TEST_ROT >= $MAX_ROT_CHANGE ) then
   /bin/echo "`now_date_string` : $procname : $inpfile : Rotator change too large ($TEST_ROT >= $MAX_ROT_CHANGE)."
   set THIS_CAT_FAILED  = 1
 endif
 
-#if ( ($SCALECHANGE_1 != 999) && ($resid_test != 999) && ($DEL_POINT != 999) )  then
-  echo $inpfile $SEEING $REFCAT $MATCHFRAC $NMATCH $FLT_SCALECHANGE_1 $FLT_SCALECHANGE_2 ${resid_test} $fit_residual $DEL_POINT $TEST_ROT $THIS_CAT_FAILED  >> $TMP_DIR/wcs_test_params
-#endif
+echo $inpfile $SEEING $REFCAT $MATCHFRAC $NMATCH $SCALECHANGE_1 $SCALECHANGE_2 ${resid_test} $fit_residual $DEL_POINT $TEST_ROT $THIS_CAT_FAILED  >> $TMP_DIR/wcs_test_params
 
 
 
