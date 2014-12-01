@@ -162,9 +162,9 @@ set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth att
 # Maybe use more than 2 to allow for RCS config imperfections.
 set MAX_ROT_CHANGE 	= 4	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
 set MAX_POINT_CHANGE 	= 130	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
-#set MAX_POINT_CHANGE 	= 60	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
+#set MAX_POINT_CHANGE 	= 200	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
-#set max_fit_residual    = "5"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
+set max_fit_residual    = "3"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
 set MAX_ELONGATION	= 3	# SExtractor sources with major:minor axis ratios greater than this will be rejected
 set MAX_SCALECHANGE	= 2	# Pixscale of fit must be within $MAX_SCALECHANGE per cent of the default header value
@@ -458,7 +458,7 @@ switch ( $INSTRUMENT )
 	  if ($DEBUG) echo $already_flipped >> $LOGFILE
 	endif
 	# Must also do this on ${inpfile}.bak since that is what the final output image is derived from 
-	cp $inpfile ${inpfile}.bak
+	/bin/cp -f $inpfile ${inpfile}.bak
 	#set already_flipped = ` $FITS_GKV ${inpfile}.bak L1FLIPX INT |& grep -v "keyword not found" `
 	#if ( "$already_flipped" == "" || "$already_flipped" == "0" ) then
 	#  /usr/local/bin/fits_flip_double_static -i ${inpfile}.bak -o /tmp/fliptemp${unique}.fits -x
@@ -474,6 +474,7 @@ switch ( $INSTRUMENT )
 	#
 	breaksw
     case 'SPRAT' :
+	/bin/cp -f $inpfile ${inpfile}.bak
 	# Use _ instead of minus sign -
         # APERTUREX,APERTUREY not curerntly being used. They are used to convert ROTCENT to POICENT,
         # but we now actually have POICENT in the headers, so they are no longer required.
@@ -483,20 +484,25 @@ switch ( $INSTRUMENT )
 	  set do_fixpix = 0
 	  set fixpix_param = ""
 	  set DETECT_MINAREA = 9
+	  #RJSXXX
+	  $FITS_AKVC $inpfile POICENTX INT 248 "" "Added by wcs_fit"
+	  $FITS_AKVC $inpfile POICENTY INT 107 "" "Added by wcs_fit"
 	else if ( $BINNING == 1 ) then
 	  set do_fixpix = 0
 	  set fixpix_param = ""
 	  set DETECT_MINAREA = 18
+	  #RJSXXX
+	  $FITS_AKVC $inpfile POICENTX INT 495 "" "Added by wcs_fit"
+	  $FITS_AKVC $inpfile POICENTY INT 213 "" "Added by wcs_fit"
         else
           if ( $DEBUG ) /bin/echo "`now_date_string` : $procname : $inpfile : Unsupported SPRAT binning." >> $LOGFILE
           set DETECT_MINAREA = 9
 	endif
-	set CAT_SEARCH_RADIUS = 3
+	set CAT_SEARCH_RADIUS = 4		# Diagonal is 0.44*sqrt(1024**2 + 254**2) = 464arcsec = 7.7 arcmin
 	#
 	#set NEEDS_FLIP = "-l -r 180 "		# Tells imwcs to flip the image top-bottom 
 	set NEEDS_FLIP = ""		
 	#
-	cp $inpfile ${inpfile}.bak
 	breaksw
     default :
 	echo "`now_date_string` : $procname : $inpfile : Instrument not recognized. " | tee $LOGFILE
@@ -556,13 +562,6 @@ set CAT_SEARCH_RADIUS_SEC = `echo "3k $CAT_SEARCH_RADIUS 60 * p" | ${dc_bin} `
 if ( $do_fixpix ) then
   ${MYBIN}fixpix ${inpfile} $fixpix_param 
 endif
-#RJS # The existence of CDELT[12] in the FITS header set to 0 seems to confuse sex
-#RJS # If these values exist delete them before calling sex
-#RJS # ignore fits_delete_keyword_value return value - presumably will fail if keyword does not exist
-#RJS ${MYBIN}fits_delete_keyword_value ${inpfile} CDELT1
-#RJS ${MYBIN}fits_delete_keyword_value ${inpfile} CDELT2
-#RJS ${MYBIN}fits_delete_keyword_value ${inpfile} CRPIX1
-#RJS ${MYBIN}fits_delete_keyword_value ${inpfile} CRPIX2
 
 ############# SExtractor #############
 if ($DEBUG) /bin/echo "`now_date_string` : $procname : Starting SEx Pipe: ${inpfile}" >> $LOGFILE
@@ -656,7 +655,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
 	/bin/echo "`now_date_string` : $procname : MAG_BEST not set in ${TMP_DIR}/${inpfile:r:t}_image.cat" | tee $LOGFILE
 	set NOMINAL_NEEDED = 2      # No point even trying imwcs since we will not have an object list
 	set SEx_format_error = 1
-	#RJS exit 6
+	#exit 6
   else 
 	setenv MAG_BEST_FIELD `/bin/echo $MAG_BEST_FIELD | ${awk_bin} '{print $1+1}'`
   endif
@@ -670,7 +669,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
 	# No point even trying imwcs since we will not have an object list
 	set NOMINAL_NEEDED = 2
 	set SEx_format_error = 1
-	#RJS exit 7
+	#exit 7
   endif
 endif
 if ( $NOMINAL_NEEDED == 0 ) then
@@ -1144,53 +1143,68 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
   setenv TMC_PATH $TWOMASS_LOCAL_DIR		# ENV var used by Mink's wcstools
   if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} : 2MASS search centre is $CAT_SEARCH_CENTRE" >> $LOGFILE
 
-  # Check whether we have a search result already cached. 
-  if ( -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass ) then    
-    set COUNT_GOOD = `grep matches ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '{print $2}'`
-    # If the disk file contains no matches delete so we try again. We'll probably get 0 again, but worth a try
-    if ( $COUNT_GOOD == 0 ) /bin/rm ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
-  endif
+  set STARBFILE = ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb 
+  #RJSXXX Forcing a catalogue re-run every time
+  /bin/rm $STARBFILE
+
   # Do catalogue search if the file is not already available on disk
-  set DO_GENERATE_STARB = 0
-  if ( ! -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass ) then
+  if ( ! -s $STARBFILE ) then
     # No fancy reformatting of RA,DEC required. scat can take HH:MM:SS DD:MM:SS straight from the FITS header
     # scat requires search radius in arcsec, not arcminutes
     # scat (-t) can create the starb file directly for itself. No need to build it like we do for USNOB
-    ${MYBIN}/scat -c tmc    -r $CAT_SEARCH_RADIUS_SEC -n 10000 $RA $DE J2000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass 
-	    ${MYBIN}/scat -c tmc -t -r $CAT_SEARCH_RADIUS_SEC -n 10000 $RA $DE J2000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb 
-	    set COUNT = `wc -l ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '{print $1}'`
-	    if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} WcsTools scat returned $COUNT objects" >> $LOGFILE
-	    if ($COUNT == 0) then
-	      set THIS_CAT_FAILED = 1
-	    else
-	      set DO_GENERATE_STARB = 1
-	    endif
-	  else
-	    if ( $DEBUG ) /bin/echo `now_date_string`" : ${procname}  2MASS catalogue ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass already exists" >> $LOGFILE
-	    touch ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
-	  endif
+    #${MYBIN}/scat -c tmc    -r $CAT_SEARCH_RADIUS_SEC -n 10000 $RA $DE J2000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass 
+    ${MYBIN}/scat -c tmc -t -r $CAT_SEARCH_RADIUS_SEC -n 10000 $RA $DE J2000 > $STARBFILE
+    # scat searches on a rectangle delimited by the four corners of the chip. For a cardinal aligned image that
+    # is precise. For an angled imaged it covers a larger sky area. If the first guess pointing is a long way off
+    # it could mean some stars along frame edges get missed. The CDS searches are different and use a circular radius.
+  else
+    if ( $DEBUG ) /bin/echo `now_date_string`" : ${procname}  2MASS catalogue $STARBFILE already exists" >> $LOGFILE
+    touch $STARBFILE
+  endif
 
-	  set STARBFILE = ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb 
-	  if (! -s $STARBFILE ) then
-	    /bin/echo `now_date_string`": ${procname}  2MASS local copy (WCSTool scat) failed. WCS fit will not be possible."
-	    set THIS_CAT_FAILED = 1
-	  endif
+  if (! -s $STARBFILE ) then
+      /bin/echo `now_date_string`": ${procname}  2MASS local copy (WCSTool scat) failed. WCS fit will not be possible."
+      set THIS_CAT_FAILED = 1
+  else
+    set length_of_header = `${awk_bin} '(/---/){print NR}' $STARBFILE | head -1`
+    if ( "$length_of_header" == "" ) set length_of_header = 0
+    if ( $DEBUG ) /bin/echo `now_date_string`" : ${procname} Length of header in $STARBFILE is $length_of_header lines "
+    set line_count = `cat $STARBFILE | wc -l `
+    set object_count = `echo "$line_count $length_of_header - p" | dc `
+    if ( $DEBUG ) /bin/echo `now_date_string` ": ${procname} WcsTools scat returned $object_count objects" >> $LOGFILE
+    if ($object_count == 0) then
+      set THIS_CAT_FAILED = 1
+      /bin/rm -f $STARBFILE
+      set STARBFILE = ${TMP_DIR}/dummy.starb
+    endif
+  endif
+
+  if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune very red objects before wc: `wc $STARBFILE `
+  head -$length_of_header $STARBFILE >! ${TMP_DIR}/tmp3.$unique
+  cat $STARBFILE | sed 's/L//g' | ${awk_bin} '(NR > '$length_of_header' && ($4-$6<1.5))' >> ${TMP_DIR}/tmp3.$unique
+  /bin/mv -f ${TMP_DIR}/tmp3.$unique $STARBFILE
+  if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune very red objects after wc: `wc $STARBFILE `
 
           # If this is an M31 field, prune out M31 itself
           set temp_dec = `echo $INPUT_DEC | tr "-" "_" | tr "+" " "`
           # Calc distance from M31 in 1000ths of a deg as an int
+          # This test can be made cleaner by doing the test in bc which allows comparisons with fractions instead of having to use INTs here.
           if (`echo "5k $INPUT_RA 10.684 - d* $temp_dec 41.267 - d* + v 1000 * 0 k 1 / p" | dc` < 500) then
-            if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune M31 `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
-            # No need to handle -v dec here
-            head -10 ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb >! ${TMP_DIR}/tmp3.$unique
-            cat ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb | tr ":" " " | awk '(NR>10) {print $1,15*($2+$3/60+$4/3600),$5+$6/60+$7/3600,$8,$9,$10,$11}' >! ${TMP_DIR}/tmp4.$unique
-            awk '( sqrt(($2-10.684)**2+($3-41.267)**2)>0.05) {print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7}' ${TMP_DIR}/tmp4.$unique >! ${TMP_DIR}/tmp5.$unique
-            cat ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp5.$unique >! ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-            if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune M31 done `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
+            if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune M31 before wc: `wc $STARBFILE `
+	    #/bin/cp -f $STARBFILE ${TMP_DIR}/2mass.starb_for_eyeball_check
+
+            # No need to handle -ve dec here because M31 is North
+            head -$length_of_header $STARBFILE >! ${TMP_DIR}/tmp3.$unique
+            #cat $STARBFILE | tr ":" " " | sed 's/L//g' | ${awk_bin} '(NR > '$length_of_header') {print $1,15*($2+$3/60+$4/3600),$5+$6/60+$7/3600,$8,$9,$10,$11}' >! ${TMP_DIR}/tmp4.$unique
+            cat $STARBFILE | tr ":" " " | ${awk_bin} '(NR > '$length_of_header') {print $1,15*($2+$3/60+$4/3600),$5+$6/60+$7/3600,$8,$9,$10,$11}' >! ${TMP_DIR}/tmp4.$unique
+	    # 0.05deg exclusion was better for IOO but too big for SPRAT
+            ${awk_bin} '( sqrt(($2-10.684)**2+($3-41.267)**2)>0.03) {print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7}' ${TMP_DIR}/tmp4.$unique >! ${TMP_DIR}/tmp5.$unique
+            cat ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp5.$unique >! $STARBFILE 
+            if ( $DEBUG ) /bin/echo `now_date_string` : $procname : $inpfile : Prune M31 done wc: `wc $STARBFILE `
             /bin/rm -f ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp5.$unique
           endif
 
-	endif
+endif
 
 	##########################
 	###### CDS NOMAD  ########
@@ -1341,59 +1355,67 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	    set THIS_CAT_FAILED = 1
 	  else
 
+	  set CDS_CAT_FILE = ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
+	  set STARBFILE =    ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
+
 	  # If the disk file contains no matches, we try again. We'll probably get 0 again, but worth a try
-	  if ( -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass ) then
-	    set CDS_GOOD = `grep matches ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '{print $2}'`
-	    if ( $CDS_GOOD == 0 ) /bin/rm ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
+	  if ( -s $CDS_CAT_FILE ) then
+	    set CDS_GOOD = `grep matches $CDS_CAT_FILE | ${awk_bin} '{print $2}'`
+	    if ( $DEBUG ) /bin/echo "2MASS catalogue $CDS_CAT_FILE already exists with $CDS_GOOD sources" >> $LOGFILE
+	    touch $CDS_CAT_FILE
+	    if ( $CDS_GOOD == 0 ) /bin/rm $CDS_CAT_FILE
 	  endif
-	  # Do catalogue search if the file is not already available on disk
+	  # Do catalogue search if the file is not already available on disk (or it just got deleted above)
 	  set DO_GENERATE_STARB = 0
-	  if ( ! -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass ) then
-	    /bin/echo "/usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 10000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass "
-	    /usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 10000 > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
-	    if ( $DEBUG ) /bin/echo CDS returned `tail -1 ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '{print $2}'` objects >> $LOGFILE
+	  if ( ! -s $CDS_CAT_FILE ) then
+	    /bin/echo "/usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 10000 > $CDS_CAT_FILE "
+	    /usr/local/bin/wcs/find2mass -r $CAT_SEARCH_RADIUS -c $CAT_SEARCH_CENTRE -m 10000 > $CDS_CAT_FILE
+	    # Search is a circular radius. For such an elongated rectangular chip as SPRAT, we are therefore always extracting
+	    # far too large a sky area. I cannot currently prune those extras out since if we came back to re-use the same 
+	    # cached catalogue file, the rotation would likely have changed.
+	    # The scat tool used for local 2MASS is deiferent and uses  rectangular search box.
+	    if ( $DEBUG ) /bin/echo CDS returned `tail -1 $CDS_CAT_FILE | ${awk_bin} '{print $2}'` objects >> $LOGFILE
 	    set DO_GENERATE_STARB = 1
-	  else
-	    if ( $DEBUG ) /bin/echo "2MASS catalogue ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass already exists" >> $LOGFILE
-	    touch ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass
 	  endif
 
 	  # Construct the starb file if it is not already available on disk
 	  # If we just downloaded a new CDS catalogue, we force creation of a new STARB too
-	  if ( ( ! -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb) || ( $DO_GENERATE_STARB) ) then
-	    if ( -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass ) then
-	      /bin/echo "Table" > ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-	      /bin/echo "image	$inpfile" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-	      /bin/echo "catalog	2MASS" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-	      /bin/echo "radecsys	FK5" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-	      /bin/echo "equinox	2000.0000" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-	      /bin/echo "epoch	2000.0000" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-	      /bin/echo "ra	dec	magJ" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-	      /bin/echo "----------	-----------	----" >> ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
+	  if ( ( ! -s $STARBFILE ) || ( $DO_GENERATE_STARB) ) then
+	    if ( -s $CDS_CAT_FILE ) then
+	      /bin/echo "Table" 				> $STARBFILE
+	      /bin/echo "image	$inpfile" 			>> $STARBFILE
+	      /bin/echo "catalog	2MASS" 			>> $STARBFILE
+	      /bin/echo "radecsys	FK5" 			>> $STARBFILE
+	      /bin/echo "equinox	2000.0000" 		>> $STARBFILE
+	      /bin/echo "epoch	2000.0000" 			>> $STARBFILE
+	      /bin/echo "ra	dec	magJ" 			>> $STARBFILE
+	      /bin/echo "----------	-----------	----" 	>> $STARBFILE
 	      # 2MASS catalogue format:
 	      #   1,2 = RA,dec
 	      #   7 = J mag
 	      #   54 = B mag
 	      #   55 = R mag
-	      sed 's/|/ /g' ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.2mass | ${awk_bin} '( (! /aclient/) && (! /#/) ) {print $1,$2,$7,$54,$55}' > ${TMP_DIR}/tmp3.$unique
+	      #   Sadly B and R are no use since if they existed then the fit would have worked on USNOB
+	      sed 's/|/ /g' $CDS_CAT_FILE | ${awk_bin} '( (! /aclient/) && (! /#/) ) {print $1,$2,$7,$54,$55}' > ${TMP_DIR}/tmp3.$unique
 	      ${awk_bin} -f ${MYBIN}/convert_cds_starb_1.awk ${TMP_DIR}/tmp3.$unique >  ${TMP_DIR}/tmp4.$unique
 	      # Force the existence of both + and - symbols on the dec
 	      ${awk_bin} '/-/ {print $1"\tM"$2"\t"$3}; ! /-/ {print $1"\tP"$2"\t"$3}' ${TMP_DIR}/tmp4.$unique > ${TMP_DIR}/tmp5.$unique
 	      /bin/sed 's/-//g ; s/+//g'  ${TMP_DIR}/tmp5.$unique >  ${TMP_DIR}/tmp6.$unique
-	      /bin/sed 's/M/-/g ; s/P/+/g'  ${TMP_DIR}/tmp6.$unique >>   ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
+	      /bin/sed 's/M/-/g ; s/P/+/g'  ${TMP_DIR}/tmp6.$unique >>   $STARBFILE
 	      /bin/rm -f ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp5.$unique ${TMP_DIR}/tmp6.$unique
 
 	      # If this is an M31 field, prune out M31 itself
 	      set temp_dec = `echo $INPUT_DEC | tr "-" "_" | tr "+" " "`
 	      # Calc distance from M31 in 1000ths of a deg as an int
+	      # This test can be made cleaner by doing the test in bc which allows comparisons with fractions instead of having to use INTs here.
 	      if (`echo "5k $INPUT_RA 10.684 - d* $temp_dec 41.267 - d* + v 1000 * 0 k 1 / p" | dc` < 500) then
-		echo "Prune M31" `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
-		# No need to handle -v dec here
-		head -8 ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb >! ${TMP_DIR}/tmp3.$unique
-		cat ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb | tr ":" " " | awk '(NR>8) {print 15*($1+$2/60+$3/3600),$4+$5/60+$6/3600,$7}' >! ${TMP_DIR}/tmp4.$unique
-		awk '( sqrt(($1-10.684)**2+($2-41.267)**2)>0.05) {print $1"\t"$2"\t"$3}' ${TMP_DIR}/tmp4.$unique >! ${TMP_DIR}/tmp5.$unique
-		cat ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp5.$unique >! ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
-		echo "Prune M31 done" `wc ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb`
+		echo "Prune M31 before wc:" `wc $STARBFILE `
+		# No need to handle -v dec here because M31 is North
+		head -8 $STARBFILE >! ${TMP_DIR}/tmp3.$unique
+		cat $STARBFILE | tr ":" " " | awk '(NR>8) {print 15*($1+$2/60+$3/3600),$4+$5/60+$6/3600,$7}' >! ${TMP_DIR}/tmp4.$unique
+		awk '( sqrt(($1-10.684)**2+($2-41.267)**2)>0.03) {print $1"\t"$2"\t"$3}' ${TMP_DIR}/tmp4.$unique >! ${TMP_DIR}/tmp5.$unique
+		cat ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp5.$unique >! $STARBFILE
+		echo "Prune M31 done. After wc:" `wc $STARBFILE `
 		/bin/rm -f ${TMP_DIR}/tmp3.$unique ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp5.$unique
 	      endif
 
@@ -1402,13 +1424,12 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	      set THIS_CAT_FAILED = 1
 	    endif
 	  else
-	    if ( $DEBUG ) /bin/echo "2MASS starb file ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb already exists" >> $LOGFILE
-	    touch ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
+	    if ( $DEBUG ) /bin/echo "2MASS starb file $STARBFILE already exists" >> $LOGFILE
+	    touch $STARBFILE
 	  endif
 
 	  endif # End of "if find2mass is installed"
 
-	  set STARBFILE = ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}_2mass.starb
 	endif
 
 
@@ -1543,9 +1564,12 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  set THIS_CAT_FAILED = 0
 	  #/bin/echo USE_BESPOKE not currently supported
 	  #set THIS_CAT_FAILED = 1
-	  set N_STARS_CAT = 7
 	  #set STARBFILE = ${TMP_DIR}/JL09B01.starb
 	  set STARBFILE = ${TMP_DIR}/bespoke.starb
+
+	  set end_of_header = `awk '(/---/){print NR}' $STARBFILE `
+	  set nlines = `cat $STARBFILE | wc -l`
+	  set N_STARS_CAT = `echo "$nlines $end_of_header - p" | dc`
 	endif
 
 	#####################
@@ -1645,19 +1669,17 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	# Given that approximate nominal WCS, we can now prune the reference catalogue list so as to only include objects
 	# on the camera FoV. To this point, we deliberately select a large patch of the reference catalogue
 	# to allow for field rotation or pointing errors.
-	#awk '(NR>8)' $STARBFILE >! ${TMP_DIR}/tmp1.$unique
-	#sky2xy $inpfile @${TMP_DIR}/tmp1.$unique >! ${TMP_DIR}/tmp2.$unique
-	#grep -v "off image" ${TMP_DIR}/tmp2.$unique | sed 's/ ->.*//' | sed 's/ /\t/g' >! ${TMP_DIR}/tmp3.$unique
-	#awk '(NR<=8)' $STARBFILE >! ${TMP_DIR}/tmp4.$unique
-	#cat ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp3.$unique >! ${STARBFILE}.fov
-	#echo `now_date_string` : $procname : $inpfile : Stars in $STARBFILE = `awk '(NR>8)' $STARBFILE | wc -l `
-	#echo `now_date_string` : $procname : $inpfile : Stars in ${STARBFILE}.fov = `awk '(NR>8)' ${STARBFILE}.fov | wc -l `
-	#rm -f ${TMP_DIR}/tmp[1234].$unique 
-
-	# No need to copy this file if we already know we are not going to run the imwcs.
-	# It may well not even exist
-	if (! $THIS_CAT_FAILED) cp ${STARBFILE} ${STARBFILE}.fov
-
+	#
+        set length_of_header = `${awk_bin} '(/---/){print NR}' $STARBFILE | head -1`
+	awk '(NR>'$length_of_header')' $STARBFILE >! ${TMP_DIR}/tmp1.$unique
+	sky2xy $inpfile @${TMP_DIR}/tmp1.$unique >! ${TMP_DIR}/tmp2.$unique
+	grep -v "off image" ${TMP_DIR}/tmp2.$unique | sed 's/ ->.*//' | sed 's/ /\t/g' >! ${TMP_DIR}/tmp3.$unique
+	awk '(NR<='$length_of_header')' $STARBFILE >! ${TMP_DIR}/tmp4.$unique
+	cat ${TMP_DIR}/tmp4.$unique ${TMP_DIR}/tmp3.$unique >! ${STARBFILE}.fov
+	echo `now_date_string` : $procname : $inpfile : Stars in $STARBFILE = `awk '(NR>'$length_of_header')' $STARBFILE | wc -l `
+	echo `now_date_string` : $procname : $inpfile : Stars in ${STARBFILE}.fov = `awk '(NR>'$length_of_header')' ${STARBFILE}.fov | wc -l `
+	rm -f ${TMP_DIR}/tmp[1234].$unique 
+	cp $STARBFILE ${STARBFILE}.fov
 
 	########### ASTROMETRIC FIT: begin ###########
 	if ( ${NOMINAL_NEEDED} != 0 ) then
@@ -1678,9 +1700,12 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	    set N_FIT_PARAMS = -125
 	  else
 	    # RA, DEC, pixscale and rotation
-	    #set N_FIT_PARAMS = -12345
-	    set N_FIT_PARAMS = -4
+	    # 3=xscale 4=yscale. If you do both then you will hit a problem later with SECPIX because you
+	    # will have SECPIX1 and SECPIX2 in the header. You'll need to parse (average?) them both.
+	    set N_FIT_PARAMS = -1235
+	    #set N_FIT_PARAMS = -6
 	  endif
+	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : N_FIT_PARAMS = $N_FIT_PARAMS"
 
 	  # Up until Sept 2014 we have been using "-q i" though not for any good reason and I have never been 
 	  # convinced that it helped.
@@ -1688,11 +1713,14 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  # The "-q i" option seems to upset fits on WCS so it has been removed. It has been removed for everything 
 	  # and we shall have to see if causes failures on other instruments, but I do not expect it to.
 	  # From 2014-09-12 onwards we have "-q p"
-	  set FIT_OPTIONS = " -q p "
+	  #set FIT_OPTIONS = " -q p "
+	  set FIT_OPTIONS = " "
+	  #set FIT_OPTIONS = " -q i "
 
 	  # S sets how many more catalogue stars to use compared to the number of reference stars we have in the image.
 	  # For example, the default we usually use is 2 so that for 10 stars in the image, imwcs will only consider
-	  # the 20 brightest in its catalogue. Hight numbers very occaussionally help.
+	  # the 20 brightest in its catalogue. Higher numbers very occaissionally help but generally only if the
+	  # reference catalogue is not well matched to the science data in some way.
 	  set IMWCS_S = 2
 
 	  # Irrespective of S, the max number to use is capped by H so increasing s alone normally leads to 
@@ -1712,19 +1740,34 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
 	  set WCS_WAS_RUN = 1
 	  set IMWCS_FAILED = 0
 	  if (-e ${TMP_DIR}/${inpfile:r:t}_temp.fits) /bin/rm -f ${TMP_DIR}/${inpfile:r:t}_temp.fits
+	  if (-e ${TMP_DIR}/${inpfile:r:t}.wcsfit ) /bin/rm -f ${TMP_DIR}/${inpfile:r:t}.wcsfit
 	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Performing Astrometric Fit..." >> $LOGFILE
 
-	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
-  (                                                         ${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
-#  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (/mnt/newarchive1/old-root/usr/local/bin/wcs/imwcs-3.6.4 -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
-#  (                                                         /mnt/newarchive1/old-root/usr/local/bin/wcs/imwcs-3.6.4 -n $N_FIT_PARAMS -c $STARBFILE -h 75 -s $IMWCS_S -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >! ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >& ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
+  (                                                                 ${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >& ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+
+	  if ($DEBUG) then
+	    echo "Looking in ${TMP_DIR}/${inpfile:r:t}.wcsfit"
+#cat ${TMP_DIR}/${inpfile:r:t}.wcsfit
+	    egrep "Using|nmatch" ${TMP_DIR}/${inpfile:r:t}.wcsfit
+	    echo "Looking in ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
+#cat ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+	    egrep "Using|nmatch" ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+	  endif
+
+    # Sometimes the output FITS file does get created even if the fitting failed. To trap this I look
+    # for the "SetWCSFITS: No matches between" message in the logs and if it is found then delete
+    # the output FITS file.
+    if (`grep -c "SetWCSFITS: No matches between" ${TMP_DIR}/${inpfile:r:t}.wcsfit`) rm ${TMP_DIR}/${inpfile:r:t}_temp.fits
 
     if ( ! -s ${TMP_DIR}/${inpfile:r:t}_temp.fits ) then
+      if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Cannot find _temp.fits, so assuming imwcs failure"
       set IMWCS_FAILED = 1
       set NMATCH = 0
       set NSTARS = 0
       set MATCHFRAC = 0
     else
+      if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : _temp.fits has been created"
       set NMATCH = `${awk_bin} '/nmatch=/ {nmatch=$3}; END {print nmatch}' ${TMP_DIR}/${inpfile:r:t}.wcsfit`
       set NSTARS = `${awk_bin} '/nmatch=/ {nstars=$5}; END {print nstars}' ${TMP_DIR}/${inpfile:r:t}.wcsfit`
       set MATCHFRAC = `echo "$NMATCH * 100 / $NSTARS" | ${bc_bin}`
@@ -1733,7 +1776,8 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
     #Conditions to be satisfied for rejecting the fit
     if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : NSTARS NMATCH MATCHFRAC IMWCS_S ROTSKYPA $NSTARS $NMATCH $MATCHFRAC $IMWCS_S $ROTSKYPA" >> $LOGFILE
     if ( ($IMWCS_FAILED == 1) || ( ($NMATCH < $THR_ABSOLUTE) && ($MATCHFRAC < ${THR_FRACTION})) || ($NMATCH < $MIN_N_STARS)) then
-       set IMWCS_S = `echo "1k $IMWCS_S 0.5 + p " | ${dc_bin} ` 
+       #set IMWCS_S = `echo "1k $IMWCS_S 0.5 + p " | ${dc_bin} ` 
+       set IMWCS_S = `echo "1k $IMWCS_S 1.5 * p " | ${dc_bin} ` 	# Use 50% more catalogue stars
        if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : That didn't work. Try -s $IMWCS_S instead" >> $LOGFILE
        # No point increasing -s if it then just gets capped by -h, so also set -h to its max of 200
        set IMWCS_H = 200;
@@ -1846,7 +1890,7 @@ else
     if ("$SCALECHANGE_2" == "") set SCALECHANGE_2 = 0
     if ("$SCALECHANGE_1" == "-") set SCALECHANGE_1 = 0
     if ("$SCALECHANGE_2" == "-") set SCALECHANGE_2 = 0
-    if ($DEBUG) /bin/echo "`now_date_string` $procname : $inpfile : Scalechange 1: $SCALECHANGE_1 (%)  Scalechange 2: $SCALECHANGE_2 (%)" >> $LOGFILE
+    if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Scalechange 1: $SCALECHANGE_1 (%)  Scalechange 2: $SCALECHANGE_2 (%)" >> $LOGFILE
   endif
 
   # We are now happy this fit looks sane so 
@@ -1993,7 +2037,7 @@ endif
 if ( ${NOMINAL_NEEDED} == 0 ) then
   if ($DEBUG) /bin/echo "`now_date_string` : ${procname} :     Create new file with WCS: $output_fits_filename" >> $LOGFILE
   set final_file = ${inpfile}.wcs2
-  cp -f ${inpfile}.bak $final_file
+  /bin/cp -f ${inpfile}.bak $final_file
   #$FITS_MODIFY_COMMENT ${final_file} RADECSYS '[FK4, FK5] Fundamental coord system'
   #$FITS_MODIFY_COMMENT ${final_file} EQUINOX 'Equinox of the coord system'
   $FITS_AKVC $final_file PIXSCALE DOUBLE `${MYBIN}gethead $fittedfile PIXSCALE` "arcsec/pixel"  "Nominal pixel scale on sky"
@@ -2030,6 +2074,7 @@ if ( ${NOMINAL_NEEDED} == 0 ) then
   $FITS_AKVC $final_file    CD1_2 DOUBLE `${MYBIN}gethead $fittedfile CD1_2`    ""              "WCS CD matrix"
   $FITS_AKVC $final_file    CD2_1 DOUBLE `${MYBIN}gethead $fittedfile CD2_1`    ""              "WCS CD matrix"
   $FITS_AKVC $final_file    CD2_2 DOUBLE `${MYBIN}gethead $fittedfile CD2_2`    ""              "WCS CD matrix"
+${MYBIN}gethead $fittedfile SECPIX
   $FITS_AKVC $final_file   SECPIX DOUBLE `${MYBIN}gethead $fittedfile SECPIX`   "arcsec/pixel"  "Fitted pixel scale on sky"
   $FITS_AKVC $final_file    IMWCS STRING "`${MYBIN}gethead $fittedfile IMWCS`"  ""              ""
   $FITS_AKVC $final_file WCSRFCAT STRING "`${MYBIN}gethead $fittedfile WCSRFCAT`"       ""              ""
@@ -2045,6 +2090,7 @@ if ( ${NOMINAL_NEEDED} == 0 ) then
   $FITS_AKVC $final_file WCSDELRO DOUBLE `${MYBIN}gethead $fittedfile WCSDELRO` "deg"           "Rotator shift w.r.t. nominal WCS"
   $FITS_AKVC $final_file WCSDELPO DOUBLE `${MYBIN}gethead $fittedfile WCSDELPO` "arcsec"        "Shift of fitted WCS w.r.t. nominal"
   $FITS_AKVC $final_file   WCSSEP DOUBLE `${MYBIN}gethead $fittedfile WCSSEP`   "arcsec"        "Residuals on WCS fit"
+fits_get_header $fittedfile
 
   /bin/echo "`now_date_string` : $procname : $inpfile : Cat $REFCATNAME ($REFCAT). Success."
 else
@@ -2053,7 +2099,7 @@ else
   /bin/echo "`now_date_string` : $procname : At the end of $inpfile and NOMINAL_NEEDED says we have to do something"
   /bin/echo "`now_date_string` : $procname :     Create nominal WCS in $inpfile instead "
   set final_file = ${inpfile}.wcs2
-  cp -f ${inpfile}.bak $final_file
+  /bin/cp -f ${inpfile}.bak $final_file
   # The nominal WCS we write is always in FK5 J2000
   #$FITS_MODIFY_COMMENT ${final_file} RADECSYS '[FK4, FK5] Fundamental coordinate system'
   #$FITS_MODIFY_COMMENT ${final_file} EQUINOX 'Date of the coordinate system'
