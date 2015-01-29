@@ -1,15 +1,15 @@
 #!/bin/csh
 # Monitor the DpRt memory useage from cron
-set doy = `/bin/date + "%j"`
+set doy = `/bin/date +"%j"`
 set log_file = "/dprt/log/dprt_monitor_${doy}.txt"
 set ps_data = `/bin/ps wwwaux | /bin/grep ngat.dprt.DpRt | /bin/awk ' $11 == "java" { print $0} '`
-set pid = `echo ${ps_data} | /bin/awk ' { print $2}'`
-set pcpu = `echo ${ps_data} | /bin/awk ' { print $3}'`
-set pmem = `echo ${ps_data} | /bin/awk ' { print $4}'`
-set vsz = `echo ${ps_data} | /bin/awk ' { print $5}'`
-set rss = `echo ${ps_data} | /bin/awk ' { print $6}'`
-set start_time = `echo ${ps_data} | /bin/awk ' { print $9}'`
-set process_time = `echo ${ps_data} | /bin/awk ' { print $10}'`
+set pid =          `echo "${ps_data}" | /bin/awk ' { print $2}'`
+set pcpu =         `echo "${ps_data}" | /bin/awk ' { print $3}'`
+set pmem =         `echo "${ps_data}" | /bin/awk ' { print $4}'`
+set vsz =          `echo "${ps_data}" | /bin/awk ' { print $5}'`
+set rss =          `echo "${ps_data}" | /bin/awk ' { print $6}'`
+set start_time =   `echo "${ps_data}" | /bin/awk ' { print $9}'`
+set process_time = `echo "${ps_data}" | /bin/awk ' { print $10}'`
 set date_str = `/bin/date +"%Y-%m-%dT%H:%M:%S"`
 set date_s = `/bin/date +"%s"`
 if( ! -r ${log_file} ) then
