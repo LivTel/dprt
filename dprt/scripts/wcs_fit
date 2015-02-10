@@ -164,8 +164,7 @@ set MAX_ROT_CHANGE 	= 4	# (degrees) Largest field rotation tolerated before we s
 set MAX_POINT_CHANGE 	= 130	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 #set MAX_POINT_CHANGE 	= 200	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
-set max_fit_residual    = "3"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
-set max_fit_residual    = "4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
+set max_fit_residual    = "1.7"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
 set MAX_ELONGATION	= 3	# SExtractor sources with major:minor axis ratios greater than this will be rejected
 set MAX_SCALECHANGE	= 2	# Pixscale of fit must be within $MAX_SCALECHANGE per cent of the default header value
@@ -1911,6 +1910,17 @@ if ( $WCS_WAS_RUN ) then
   $FITS_AKVC ${fittedfile} WCSRDRES STRING "$RDRESID" "arcsec" "WCS fitting residuals, mean and sigma"
   set fit_residual=`/bin/echo $RDRESID | /usr/bin/cut -d"/" -f1`
   set resid_test=`/bin/echo "(${fit_residual} > ${max_fit_residual})" | ${bc_bin}`
+
+# From Mink's code (libwcs/imsetwcs.c) to show exactly what those RDRES residual parameters mean
+# So yes, they are the mean separation and RMS separation
+#    sep = sepsum / dmatch;
+#    sep2 = sqrt (sep2sum / dmatch1);
+#    printf ("# Mean dra= %.4f/%.4f  ddec= %.4f/%.4f sep= %.4f/%.4f\n",
+#            rsep, rsep2, dsep, dsep2, sep, sep2);
+
+
+
+
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : $inpfile : Input RA,Dec, Rot = $INPUT_RA $INPUT_DEC $INPUT_ROT " >> $LOGFILE
   set OUTPUT_RA  = `${MYBIN}gethead ${fittedfile} CRVAL1`
   set OUTPUT_DEC  = `${MYBIN}gethead ${fittedfile} CRVAL2`
