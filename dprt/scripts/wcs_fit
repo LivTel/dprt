@@ -165,6 +165,7 @@ set MAX_POINT_CHANGE 	= 130	# (Arcsec) Largest apparent pointing error before we
 #set MAX_POINT_CHANGE 	= 200	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
 set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 set max_fit_residual    = "3"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
+set max_fit_residual    = "4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
 set MAX_ELONGATION	= 3	# SExtractor sources with major:minor axis ratios greater than this will be rejected
 set MAX_SCALECHANGE	= 2	# Pixscale of fit must be within $MAX_SCALECHANGE per cent of the default header value
@@ -1743,12 +1744,12 @@ endif
 	  if (-e ${TMP_DIR}/${inpfile:r:t}.wcsfit ) /bin/rm -f ${TMP_DIR}/${inpfile:r:t}.wcsfit
 	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : $inpfile : Performing Astrometric Fit..." >> $LOGFILE
 
-	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >& ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
-  (                                                                 ${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 20 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile >& ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
+	  if ($DEBUG) /bin/echo "`now_date_string` : ${procname} : (${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 10 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile > ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit" >> $LOGFILE
+  (                                                                 ${MYBIN}imwcs -n $N_FIT_PARAMS -c ${STARBFILE}.fov -h $IMWCS_H -s $IMWCS_S $NEEDS_FLIP -p ${PIXSCALE} -vwd ${TMP_DIR}/${inpfile:r:t}_wcs.cat -t 10 $FIT_OPTIONS -o ${TMP_DIR}/${inpfile:r:t}_temp.fits $inpfile > ${TMP_DIR}/${inpfile:r:t}.wcsfit) >& ${TMP_DIR}/${inpfile:r:t}.errwcsfit
 
 	  if ($DEBUG) then
 	    echo "Looking in ${TMP_DIR}/${inpfile:r:t}.wcsfit"
-#cat ${TMP_DIR}/${inpfile:r:t}.wcsfit
+cat ${TMP_DIR}/${inpfile:r:t}.wcsfit
 	    egrep "Using|nmatch" ${TMP_DIR}/${inpfile:r:t}.wcsfit
 	    echo "Looking in ${TMP_DIR}/${inpfile:r:t}.errwcsfit"
 #cat ${TMP_DIR}/${inpfile:r:t}.errwcsfit
