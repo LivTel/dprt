@@ -1,7 +1,15 @@
 #!/bin/csh
-# Monitor the DpRt memory useage from cron
+# Monitor the DpRt memory usage from cron
 set doy = `/bin/date +"%j"`
-set log_file = "/dprt/log/dprt_monitor_${doy}.txt"
+if( -r /dprt/log ) then
+    set log_dir = "/dprt/log"
+else if( -r /icc/log ) then
+    set log_dir = "/icc/log"
+else
+    echo "Could not find a log directory."
+    exit 1
+endif
+set log_file = "${log_dir}/dprt_monitor_${doy}.txt"
 set ps_data = `/bin/ps wwwaux | /bin/grep ngat.dprt.DpRt | /bin/awk ' $11 == "java" { print $0} '`
 set pid =          `echo "${ps_data}" | /bin/awk ' { print $2}'`
 set pcpu =         `echo "${ps_data}" | /bin/awk ' { print $3}'`
