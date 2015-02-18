@@ -30,7 +30,7 @@ alias now_date_string "/bin/date +'%Y-%m-%dT%H:%M:%S %Z'"
 #
 if ( "`hostname -s`" == "lt-qc" ) then
   set TMP_DIR = /data/temp/wcs
-else if ( "`hostname -s`" == "ioilinux"  || "`hostname -s`" == "i1" ) then
+else if ( "`hostname -s`" == "ioilinux"  || "`hostname -s`" == "i1" || "`hostname -s`" == "o1" ) then
   set TMP_DIR = /icc/tmp/wcs
 else if ( -d /home/dev/tmp ) then
 	set TMP_DIR = /home/dev/tmp/wcs
@@ -46,7 +46,7 @@ else
 endif
 
 if ( -d /icc/wcs_fit/bin/ ) then
-    # this is on datared
+    # this is on datared and o1
     setenv MYBIN /icc/wcs_fit/bin/
 else if ( -d /dprt/wcs_fit/bin/ ) then
     setenv MYBIN /dprt/wcs_fit/bin/
@@ -61,7 +61,6 @@ endif
 if ( ! $?PATH ) then
     setenv PATH ".:/bin/:/usr/bin/:/usr/local/bin/"
 endif
-setenv PATH ${PATH}:${MYBIN}
 setenv PATH ${PATH}:${MYBIN}
 
 # End of setting paths
@@ -162,8 +161,8 @@ set MIN_N_STARS  	= 3	# Fewest number of stars in a field for it to be worth att
 # Maybe use more than 2 to allow for RCS config imperfections.
 set MAX_ROT_CHANGE 	= 4	# (degrees) Largest field rotation tolerated before we suspect WCS fit failure
 set MAX_POINT_CHANGE 	= 130	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
-#set MAX_POINT_CHANGE 	= 200	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure
-set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
+#set MAX_POINT_CHANGE 	= 200	# (Arcsec) Largest apparent pointing error before we suspect WCS fit failure. 1.4 was good for RATCam, IOO etc
+#set max_fit_residual    = "1.4"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure. Relaxed slightly to 1.7 for sprat
 set max_fit_residual    = "1.7"	# (arcsec). Largest mean fit residual before we suspect WCS fit failure
 # See also instrument dependent configs below. APERTUREX, APERTUREY and fixpix
 set MAX_ELONGATION	= 3	# SExtractor sources with major:minor axis ratios greater than this will be rejected
@@ -1165,6 +1164,7 @@ if ( $REFCATNAME == LOCAL_TWOMASS ) then
   if (! -s $STARBFILE ) then
       /bin/echo `now_date_string`": ${procname}  2MASS local copy (WCSTool scat) failed. WCS fit will not be possible."
       set THIS_CAT_FAILED = 1
+      set length_of_header = 0
   else
     set length_of_header = `${awk_bin} '(/---/){print NR}' $STARBFILE | head -1`
     if ( "$length_of_header" == "" ) set length_of_header = 0
@@ -2206,6 +2206,11 @@ exit 1
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.23  2015/02/10 22:53:01  eng
+# Slightly tightened the RDRES constraint to 1.7arcsec.
+# After eyeballingh a lot of good and bad SPRAT WCS fits, 1.7arcsec
+# was chosen as the optimum threshold.
+#
 # Revision 1.11  2009/03/20 18:07:09  cjm
 # Changed deletion on tmp1-4 and fwhm_limit.awk for debugging purposes.
 # Changed execution of fwhm_limit.awk so it is executed via /bin/awk - doing this
