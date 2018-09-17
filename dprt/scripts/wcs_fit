@@ -878,7 +878,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
   # root not being a real user on the nfs mount cannot directly execute the script, but can via executing ${awk_bin}
   if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}" >> $LOGFILE
   ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}
-  if ($DEBUG) /bin/echo `now_date_string` : $procname : Before and after FWHM rejection there were `cat ${TMP_DIR}/tmp1.${unique} | wc -l` and `cat ${TMP_DIR}/tmp2.${unique} | wc -l` sources respectively
+  if ($DEBUG) /bin/echo `now_date_string` : $procname : Before and after FWHM rejection (SExFLAG==0) there were `cat ${TMP_DIR}/tmp1.${unique} | wc -l` and `cat ${TMP_DIR}/tmp2.${unique} | wc -l` sources respectively
   # Ensure the contents of MAG_BEST_FIELD field are < 99 (${TMP_DIR}/tmp2 > ${TMP_DIR}/tmp3)
   ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} > ${TMP_DIR}/tmp3.${unique}
   # Keep only $MAX_N_STARS best
@@ -907,7 +907,7 @@ if ( $NOMINAL_NEEDED == 0 ) then
     if ($DEBUG) /bin/cat ${TMP_DIR}/fwhm_limit.awk.${unique} >> $LOGFILE
     if ($DEBUG) /bin/echo "`now_date_string` : $procname : ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} > ${TMP_DIR}/tmp2.${unique}" >> $LOGFILE
     ${awk_bin} -f ${TMP_DIR}/fwhm_limit.awk.${unique} ${TMP_DIR}/tmp1.${unique} >! ${TMP_DIR}/tmp2.${unique}
-    if ($DEBUG) /bin/echo `now_date_string` : $procname : Before and after FWHM rejection there were `cat ${TMP_DIR}/tmp1.${unique} | wc -l` and `cat ${TMP_DIR}/tmp2.${unique} | wc -l` sources respectively
+    if ($DEBUG) /bin/echo `now_date_string` : $procname : Before and after FWHM rejection (SExFLAG<8) there were `cat ${TMP_DIR}/tmp1.${unique} | wc -l` and `cat ${TMP_DIR}/tmp2.${unique} | wc -l` sources respectively
     ${awk_bin} '( (! /^#/) && $ENVIRON["MAG_BEST_FIELD"] < 99 ) ' ${TMP_DIR}/tmp2.${unique} >! ${TMP_DIR}/tmp3.${unique}
     /usr/bin/head -$N_STARS_TO_USE ${TMP_DIR}/tmp3.${unique} >! ${TMP_DIR}/tmp4.${unique}
     ${awk_bin} '{printf "%s %s %s\n", $ENVIRON["X_IMAGE_FIELD"],$ENVIRON["Y_IMAGE_FIELD"],$ENVIRON["MAG_BEST_FIELD"]}' ${TMP_DIR}/tmp4.${unique} >! ${TMP_DIR}/${inpfile:r:t}_wcs.cat_less_strict
@@ -1294,9 +1294,14 @@ endif
 	  else
 
 	    # If the disk file contains no matches, we try again. We'll probably get 0 again, but worth a try
+	    # This also catches and deletes the case of a cached empty nomad file which should only ever occur
+	    # in the event that we or CDS are offline. It happened for example when our DNS was down.
 	    if ( -s ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.nomad ) then
 	      set COUNT_GOOD = `grep matches ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.nomad | ${awk_bin} '{print $2}'`
-	      if ( $COUNT_GOOD == 0 ) /bin/rm ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.nomad
+	      if ( "$COUNT_GOOD" == "0" || "$COUNT_GOOD" == "" ) then
+		/bin/echo `now_date_string` ": ${procname} : Cached ${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.nomad is empty. Try CDS again" >> $LOGFILE
+		/bin/rm ${TMP_DIR}/${CAT_SEARCH_CENTRE}_${CAT_SEARCH_RADIUS}.nomad
+	      endif
 	    endif
 
 	    # Do catalogue search if the file is not already available on disk and file is not empty
