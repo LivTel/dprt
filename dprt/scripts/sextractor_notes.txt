@@ -1,0 +1,29 @@
+We are using a Solaris compiled sextractor : eng@ltccd4:~eng/sextractor-2.5.0
+GRB pipeline uses /home/dev/am_pipe_develop/sextractor-2.3.2/src.
+
+Standalone compilation produces error:
+
+*ERROR*: can't read astrom_pipe.param
+
+Error is generated in catout.c when PARAMETERS_NAME file can't be found
+
+
+astrom_pipe.sec has :
+PARAMETERS_NAME	astrom_pipe.param  #name of the file for catalog contents
+
+/home/dev/am_pipe_develop/sextractor-2.3.2/src/catout.c replaces reading of PARAMETERS_NAME with a hardcoded list:
+
+   "NUMBER",
+   "X_IMAGE",
+   "Y_IMAGE",
+   "FLUX_ISOCOR",
+   "FLUXERR_ISOCOR",
+   "BACKGROUND",
+   "MAG_BEST",
+   "MAGERR_BEST",
+   "ELONGATION",
+   "THETA_IMAGE",
+   "FWHM_IMAGE",
+   "FLAGS"
+
+cp /export/home/eng/sextractor-2.5.0/config/default.param /space/home/dev/bin/dprt/wcs_fit/sun4/astrom_pipe.param
