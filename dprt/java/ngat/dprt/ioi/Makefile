@@ -1,12 +1,12 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ioi/Makefile,v 1.1 2013-09-04 15:18:57 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/ioi/Makefile,v 1.2 2025-02-03 13:17:11 cjm Exp $ 
 include ../../../../../Makefile.common
 include	../../../../Makefile.common
 
 PACKAGEDIR	= ngat/dprt/ioi
 BINDIR 		= $(DPRT_BIN_HOME)/java/$(PACKAGEDIR)
 
-SRCS 		= DpRtLibrary.java
+SRCS 		= DpRtLibrary.java DpRtLibraryScript.java 
 OBJS 		= $(SRCS:%.java=$(BINDIR)/%.class)
 
 top: $(OBJS)
@@ -31,4 +31,7 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2013/09/04 15:18:57  cjm
+# Initial revision
+#
 #
