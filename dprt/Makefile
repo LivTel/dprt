@@ -1,10 +1,10 @@
 # Makefile -*- mode: Fundamental;-*-
-# $Header: /space/home/eng/cjm/cvs/dprt/Makefile,v 1.3 2001-05-15 16:44:52 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/Makefile,v 1.4 2025-02-03 13:40:54 cjm Exp $ 
 
 include ../Makefile.common
 include Makefile.common
 
-DIRS = java latex
+DIRS = java test latex
 
 top:
 	@for i in $(DIRS); \
@@ -52,6 +52,9 @@ backup: tidy checkin
 	compress $(BACKUP_DIR)/dprt.tar
 
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2001/05/15 16:44:52  cjm
+# Changed depend rule.
+#
 # Revision 1.2  2001/05/15 16:41:06  cjm
 # Directory changes.
 #
