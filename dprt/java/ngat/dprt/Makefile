@@ -1,5 +1,5 @@
 # Makefile
-# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.27 2014-09-02 13:33:19 cjm Exp $ 
+# $Header: /space/home/eng/cjm/cvs/dprt/java/ngat/dprt/Makefile,v 0.28 2025-02-03 13:23:41 cjm Exp $ 
 include ../../../../Makefile.common
 include ../../../Makefile.common
 
@@ -55,7 +55,7 @@ checkout:
 	done;
 
 checkin:
-	-$(CI) $(CI_OPTIONS) $(SRCS)
+	-$(CI) $(CI_OPTIONS) $(SRCS) $(CONFIG_SRCS)
 	-@for i in $(DIRS); \
 	do \
 		(echo checkin in $$i...; cd $$i; $(MAKE) checkin; $(CI) $(CI_OPTIONS) Makefile); \
@@ -83,6 +83,9 @@ backup: tidy
 
 #
 # $Log: not supported by cvs2svn $
+# Revision 0.27  2014/09/02 13:33:19  cjm
+# Added sprat properties for installation on various machines.
+#
 # Revision 0.26  2014/08/01 09:59:36  cjm
 # Added sprat directory and config file.
 #
