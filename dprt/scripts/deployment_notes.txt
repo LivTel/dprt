@@ -1,0 +1,135 @@
+wcstools:
+${MYBIN}imwcs-3.6.4
+${MYBIN}fixpix
+${MYBIN}gethead
+${MYBIN}sethead
+
+Currently, we have /home/dev/src/wcstools-3.6.8/bin/${HOSTTYPE} compiled for both Linux and Solaris.
+Robs stuff currently uses 3.6.4 however....
+
+sextractor:
+${MYBIN}sex_LT
+
+ltproxy:
+ls -l `locate sex_LT`
+-rwxr-xr-x    1 eng      ltdev      998267 Sep 20  2006 /grb/bin/astrometric_fit/sex_LT
+
+ltdevsrv:
+-rwxr-xr-x    1 am       ltdev      949415 Nov 17  2004 /space/home/dev/am_pipe_develop/bin_old/olds/sex_LT_o
+-rwxr-xr-x    1 am       ltdev      998267 Nov 18  2004 /space/home/dev/am_pipe_develop/bin_old/sex_LT
+-rwxr-xr-x    1 am       ltdev      998267 Dec  7  2004 /space/home/dev/am_pipe_develop/bin/sex_LT
+-rwxrwxr-x    1 am       ltdev      949415 Nov 11  2004 /space/home/dev/am_pipe_develop/sextractor-2.3.2/src/sex_LT
+-rwxr-xr-x    1 crg      ltdev      998267 Nov 29  2004 /space/home/dev/bin/grb/astrometric_fit/sex_LT
+-rwxr-xr-x    1 501      501        998267 Nov 18  2004 /space/home/dev/bin/sex_LT
+-rwxrwxr-x    1 crg      ltdev      998267 Nov 18  2004 /space/home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/bin/sex_LT
+-rwxr-xr-x    1 eng      ltdev      998267 Sep 23  2005 /space/home/dev/src/dpol/dpol_wcs/bin/sex_LT
+-rwxr-xr-x    1 rjs      ltdev      405395 Aug  4  2006 /space/home/dev/src/Wcs/GRBPipeline/sex_LT.gz
+-rwxr-xr-x    1 eng      ltdev      998267 Nov 29  2004 /space/home/dev/Testing_WCS/astrometric_fit/sex_LT
+
+Source version:
+/space/home/dev/am_pipe_develop/sextractor-2.3.2/src/sex_LT
+Started again: Downloaded sextractor-2.5.0 from http://terapix.iap.fr/rubrique.php?id_rubrique=91/
+~eng/sextractor-2.5.0
+./configure --enable-static doesn't work - cc: -a conflicts with -dy! (static/dynamic conflict), but cc command
+line has -static for Sun cc !
+
+
+our own:
+${MYBIN}astrom_pipe.sex
+
+ls -l `locate astrom_pipe.sex`
+-rw-r--r--    1 rjs      ltdev        1379 Aug  4  2006 /home/dev/src/Wcs/GRBPipeline/astrom_pipe.sex.gz
+-rw-r--r--    1 eng      ltdev        3039 Jul 26  2006 /home/dev/Testing_WCS/astrometric_fit/astrom_pipe.sex
+
+${MYBIN}iterstat
+now /space/home/dev/bin/$(HOSTTYPE)/iterstat
+
+${MYBIN}/get_local_usnob.csh
+locate get_local_usnob.csh
+/home/dev/src/dpol/dpol_wcs/get_local_usnob.csh
+/home/dev/src/Wcs/GRBPipeline/get_local_usnob.csh.gz
+/home/dev/bin/grb/astrometric_fit/get_local_usnob.csh
+/home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/bin/get_local_usnob.csh
+/home/dev/Testing_WCS/astrometric_fit/get_local_usnob.csh
+
+locate rd.awk
+
+/home/dev/bin/grb/astrometric_fit/rd.awk
+/home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/bin/rd.awk
+/home/dev/am_pipe_develop/bin/rd.awk
+
+ls -l `locate tostartab_hhmmss.sh`
+-rwxr-xr-x    1 am       ltdev        1168 Nov 12  2004 /home/dev/am_pipe_develop/bin_old/tostartab_hhmmss.sh
+-rwxr-xr-x    1 am       ltdev        1172 Dec  7  2004 /home/dev/am_pipe_develop/bin/tostartab_hhmmss.sh
+-rwxr-xr-x    1 crg      ltdev        1172 Nov 29  2004 /home/dev/bin/grb/astrometric_fit/tostartab_hhmmss.sh
+-rwxrwxr-x    1 crg      ltdev        1016 Oct 18  2004 /home/dev/CRG/bin/tostartab_hhmmss.sh
+-rwxrwxr-x    1 crg      ltdev        1172 Nov 23  2004 /home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/bin/tostartab_hhmmss.sh
+-rwxrwxr-x    1 eng      ltdev        1172 Sep 23  2005 /home/dev/src/dpol/dpol_wcs/tostartab_hhmmss.sh
+-rwxr-xr-x    1 rjs      ltdev         576 Aug  4  2006 /home/dev/src/Wcs/GRBPipeline/tostartab_hhmmss.sh.gz
+-rwxr-xr-x    1 eng      ltdev        1172 Nov 29  2004 /home/dev/Testing_WCS/astrometric_fit/tostartab_hhmmss.sh
+
+ls -l `locate crop_usnob`
+-rwxr-xr-x    1 crg      ltdev     2184032 Dec 14  2004 /home/dev/bin/grb/astrometric_fit/crop_usnob
+-rwxr-xr-x    1 crg      ltdev     2184032 Dec 14  2004 /home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/bin/crop_usnob
+-rw-r--r--    1 crg      ltdev       10337 Dec 10  2004 /home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/src/crop_usnob.c
+-rwxr-xr-x    1 eng      ltdev     2184032 Sep 23  2005 /home/dev/src/dpol/dpol_wcs/bin/crop_usnob
+-rwxr-xr-x    1 rjs      ltdev      844892 Aug  4  2006 /home/dev/src/Wcs/GRBPipeline/crop_usnob.gz
+-rwxr-xr-x    1 eng      ltdev     2184032 Dec 14  2004 /home/dev/Testing_WCS/astrometric_fit/crop_usnob
+
+usnob1
+------
+
+Where is the source? We have two copies:
+/home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/src/usnob
+/home/dev/am_pipe_develop/USNOB_tests/src/
+
+eng@ltccd4:
+cd ~
+cp -R ~dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/src/usnob .
+cd usnob
+make
+Errors!
+Rewrote Makefile using  $(CCSTATICFLAG)
+make
+cp usnob1 ~dev/bin/dprt/wcs_fit/sun4
+
+Creating deployment directory
+-----------------------------
+
+cd ~dev/bin/dprt/wcs_fit/sun4
+ln -s ~dev/src/dprt/scripts/wcs_fit
+ln -s ~dev/src/dprt/scripts/blank_wcs_fit
+
+ln -s ~dev/src/wcstools-3.6.8/bin/sun4/imwcs
+ln -s ~dev/src/wcstools-3.6.8/bin/sun4/fixpix
+ln -s ~dev/src/wcstools-3.6.8/bin/sun4/sethead
+ln -s ~dev/src/wcstools-3.6.8/bin/sun4/gethead
+
+cp ~dev/Testing_WCS/astrometric_fit/astrom_pipe.sex .
+ln -s ~dev/bin/${HOSTTYPE}/iterstat
+cp ~dev/Testing_WCS/astrometric_fit/get_local_usnob.csh .
+cp ~dev/bin/grb/astrometric_fit/rd.awk .
+cp ~dev/Testing_WCS/astrometric_fit/tostartab_hhmmss.sh .
+
+ln -s ~dev/bin/ccd/misc/sun4/fits_modify_comment_static
+crop_usnob Makefile now puts crop_usnob into ~dev/bin/dprt/wcs_fit/sun4
+cp ~eng/sextractor-2.5.0/src/sex .
+
+Shared libraries needed:
+
+iterstat:
+libcfitsio.so 
+libdprt_libfits.so 
+liblt_filenames.so
+
+crop_usnob:
+libcfitsio.so
+
+remove_wcs.csh
+--------------
+cd /home/dev/src/dprt/scripts
+cp /home/dev/src/OPS/Scripts/ARCHIVE/remove_wcs.csh .
+
+cd /space/home/dev/bin/dprt/wcs_fit/sun4
+ln -s /space/home/dev/src/wcstools-3.6.8/bin/sun4/delhead
+ln -s /space/home/dev/src/dprt/scripts/remove_wcs.csh 

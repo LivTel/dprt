@@ -1,0 +1,8 @@
+scp -C /mnt/stick/lt/ratcam/wcs_fit_deployment_ltccd2.tar.gz  eng@ltccd2:download/wcs/20070925/
+
+ssh eng@ltccd2
+cd /space/home/eng/download/wcs/20070925/
+gunzip wcs_fit_deployment_ltccd2.tar.gz
+su
+cd /
+tar xvf /space/home/eng/download/wcs/20070925/wcs_fit_deployment_ltccd2.tar

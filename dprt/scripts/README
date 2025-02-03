@@ -1,0 +1,120 @@
+History:
+
+Originally there was the GRB WCS script. It is still (March 2010) in use.
+
+That was heavily reworked into pipe_astrometric.csh by RJS and became the standard WCS 
+fitting on archive. This may be found in /space/home/dev/src/OPS/Scripts/ARCHIVE/. It is
+now obsolete. 
+
+pipe_astrometric.csh diverged into two version. RJS maintained one copy on archive and
+CJM developed an ICS and Solaris compatible version which was used by FRODOSpec on site
+for acquisition.
+
+CJM's and RJS's versions were remerged in late 2009 to create a single wcs_fit which runs
+on both sites. That master script is here.
+
+Note that the two sites are rather different and this script therefore can behave very differently
+depending on circumstances. On archive it makes heavy use of on-line public data archives
+(CDS, GSC etc) whereas on datared it cannot see the internet and uses local copies of 
+USNOB and 2MASS PSC. Therefore there are varisou external helper applications (e.g., aclinet)
+which are never actually used in a datared deployment whereas usnob would never be used in an
+archive deployment.
+
+
+Requirements
+------------
+
+/home/dev/tmp/wcs or /icc/tmp/wcs
+/mnt/usnob1 should contain local copy of usnob1
+
+MYBIN 		= /usr/local/bin/wcs/
+
+sextractor:
+${MYBIN}sex
+
+our own:
+${MYBIN}astrom_pipe.sex
+${MYBIN}iterstat
+${MYBIN}/get_local_usnob.csh , this calls:
+${MYBIN}rd.awk and 
+${MYBIN}usnob1
+${MYBIN}/tostartab_hhmmss.sh 
+${MYBIN}crop_usnob
+${MYBIN}fits_modify_comment_static
+${MYBIN}fits_get_keyword_value
+${MYBIN}fits_add_keyword_value_comment_static
+
+wcstools:
+${MYBIN}imwcs
+${MYBIN}fixpix
+${MYBIN}gethead
+${MYBIN}sethead
+
+ basic:
+/bin/awk
+/bin/sed
+/bin/echo
+/usr/bin/test (NB /bin/test is the default under Solaris, but does not exist under Linux. /usr/bin exists under both.)
+/usr/bin/wc  (NB /bin/wc is the default under Solaris, but does not exist under Linux. /usr/bin exists under both.)
+/usr/bin/dc  (NB /bin/dc is the default under Solaris, but does not exist under Linux. /usr/bin exists under both.)
+/usr/bin/bc  (NB /bin/bc is the default under Solaris, but does not exist under Linux. /usr/bin exists under both.)
+/usr/bin/tail (NB /bin/tail is the default under Solaris, but does not exist under Linux. /usr/bin exists under both.)
+/usr/bin/cut
+/usr/bin/head
+/bin/mv
+/bin/cp
+/bin/touch
+/bin/cat
+/bin/grep
+
+My version also now uses:
+/bin/chmod
+/bin/rm
+
+ls -l `locate get_local_usnob.csh`
+-rwxr-xr-x    1 crg      ltdev        4173 Jun 30  2005 /home/dev/bin/grb/astrometric_fit/get_local_usnob.csh
+-rwxrwxr-x    1 crg      ltdev        4173 Jun 30  2005 /home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/bin/get_local_usnob.csh
+-rwxrwxr-x    1 eng      ltdev        4009 Sep 23  2005 /home/dev/src/dpol/dpol_wcs/get_local_usnob.csh
+-rwxr-xr-x    1 rjs      ltdev        1367 Aug  4  2006 /home/dev/src/Wcs/GRBPipeline/get_local_usnob.csh.gz
+-rwxr-xr-x    1 eng      ltdev        4012 Jan 24  2005 /home/dev/Testing_WCS/astrometric_fit/get_local_usnob.csh
+
+ls -l `locate tostartab_hhmmss.sh`
+-rwxr-xr-x    1 am       ltdev        1168 Nov 12  2004 /home/dev/am_pipe_develop/bin_old/tostartab_hhmmss.sh
+-rwxr-xr-x    1 am       ltdev        1172 Dec  7  2004 /home/dev/am_pipe_develop/bin/tostartab_hhmmss.sh
+-rwxr-xr-x    1 crg      ltdev        1172 Nov 29  2004 /home/dev/bin/grb/astrometric_fit/tostartab_hhmmss.sh
+-rwxrwxr-x    1 crg      ltdev        1016 Oct 18  2004 /home/dev/CRG/bin/tostartab_hhmmss.sh
+-rwxrwxr-x    1 crg      ltdev        1172 Nov 23  2004 /home/dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/bin/tostartab_hhmmss.sh
+-rwxrwxr-x    1 eng      ltdev        1172 Sep 23  2005 /home/dev/src/dpol/dpol_wcs/tostartab_hhmmss.sh
+-rwxr-xr-x    1 rjs      ltdev         576 Aug  4  2006 /home/dev/src/Wcs/GRBPipeline/tostartab_hhmmss.sh.gz
+-rwxr-xr-x    1 eng      ltdev        1172 Nov 29  2004 /home/dev/Testing_WCS/astrometric_fit/tostartab_hhmmss.sh
+
+
+${MYBIN}crop_usnob
+------------------
+Should be built from ~dev/Dpol/dpol/CURRENT_VERSION_GRBPIPELINE/src
+Makefile created.
+Needs libCRG_LT.a
+That needs GSL library (libgsl.a), GNU Scientific Library, see:
+http://www.gnu.org/software/gsl/
+cp ~dev/download/solaris8/gsl-1.9.tar.gz ~
+gunzip gsl-1.9.tar.gz
+tar xvf gsl-1.9.tar
+cd gsl-1.9
+make
+( make check > log.txt ) > & log.txt
+su
+make install
+includes: /usr/local/include/gsl/
+/usr/local/lib/libgsl.a
+
+
+sextractor:
+${MYBIN}sex_LT
+
+cp /export/home/eng/sextractor-2.5.0/config/default.param /space/home/dev/bin/dprt/wcs_fit/sun4/astrom_pipe.param
+
+Deleting wcs from a file:
+
+/home/dev/src/OPS/Scripts/ARCHIVE/remove_wcs.csh
+uses delhead
+

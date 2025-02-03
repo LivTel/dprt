@@ -1,0 +1,10 @@
+# $Header: /space/home/eng/cjm/cvs/dprt/Makefile.common,v 1.1 2025-02-03 13:39:34 cjm Exp $
+
+DPRT_HOME		=	dprt
+DPRT_SRC_HOME		= 	$(LT_SRC_HOME)/$(DPRT_HOME)
+DPRT_BIN_HOME		= 	$(LT_BIN_HOME)/$(DPRT_HOME)
+DPRT_DOC_HOME		= 	$(LT_DOC_HOME)/$(DPRT_HOME)
+
+#
+# $Log: not supported by cvs2svn $
+#

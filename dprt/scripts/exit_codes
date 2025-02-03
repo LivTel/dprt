@@ -1,0 +1,8 @@
+#!/bin/csh
+if ( $#argv != 1 ) then
+	echo "exit_codes <script name>"
+	echo "Print exit codes from the specified script in numberic order"
+	exit 1
+endif
+set scriptname = $1 
+grep exit ${scriptname} | sed "s/.*exit \(.*\)/\1/" | sort -n
