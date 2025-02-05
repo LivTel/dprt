@@ -24,7 +24,8 @@ CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properti
 		o1.dprt.properties rise.dprt.properties thor.dprt.properties \
 		datared.ratcam.dprt.properties datared.o.dprt.properties \
 		frodospec1.frodospec.dprt.properties frodospec1.sprat.dprt.properties sprat1.sprat.dprt.properties \
-		ioi1.sprat.dprt.properties ioi1.ioi.dprt.properties loci1.loci.dprt.properties 
+		ioi1.sprat.dprt.properties ioi1.ioi.dprt.properties \
+		loci1.loci.dprt.properties ltdevx64.loci.dprt.properties
 #ioi1.dprt.properties frodospec1.dprt.properties sprat1.dprt.properties 
 CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
 
