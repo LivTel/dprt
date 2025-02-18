@@ -1,0 +1,46 @@
+FROM openjdk:8
+#
+# Setup directory structure
+#
+RUN mkdir -p /docker/bin/javalib
+RUN mkdir -p /docker/bin/lib/x86_64-linux
+RUN mkdir -p /docker/bin/dprt/java
+# Required jars
+ADD /home/dev/bin/javalib/ngat_util_logging.jar /docker/bin/javalib/ngat_util_logging.jar
+ADD /home/dev/bin/javalib/ngat_util.jar /docker/bin/javalib/ngat_util.jar
+ADD /home/dev/bin/javalib/ngat_net.jar /docker/bin/javalib/ngat_net.jar
+ADD /home/dev/bin/javalib/ngat_fits.jar /docker/bin/javalib/ngat_fits.jar
+ADD /home/dev/bin/javalib/ngat_message_inst_dp.jar /docker/bin/javalib/ngat_message_inst_dp.jar
+ADD /home/dev/bin/javalib/ngat_message_base.jar /docker/bin/javalib/ngat_message_base.jar
+#
+# Copy DpRt application into /docker/bin/dprt/java
+#
+ADD /home/dev/bin/dprt/java/*.class /docker/bin/dprt/java/
+#
+# Shared libraries
+# Note these should be built from source, this is really dodgy
+#
+ADD /home/dev/bin/lib/x86_64-linux/libdprt_jni_general.so /docker/bin/lib/x86_64-linux/libdprt_jni_general.so
+ADD /home/dev/bin/lib/x86_64-linux/libdprt_object.so /docker/bin/lib/x86_64-linux/libdprt_object.so
+ADD /home/dev/bin/lib/x86_64-linux/liblt_filenames.so /docker/bin/lib/x86_64-linux/liblt_filenames.so
+ADD /home/dev/bin/lib/x86_64-linux/libloci_ccd_dprt.so /docker/bin/lib/x86_64-linux/libloci_ccd_dprt.so
+ADD /home/dev/bin/lib/x86_64-linux/libdprt_libfits.so /docker/bin/lib/x86_64-linux/libdprt_libfits.so
+ADD /home/dev/bin/lib/x86_64-linux/libdprt_loci.so /docker/bin/lib/x86_64-linux/libdprt_loci.so
+#
+# EXPOSE ports
+#
+# DpRt uses port 6880
+EXPOSE 6880
+# Setup CLASSPATH
+ENV CLASSPATH="/docker/bin/javalib/ngat_fits.jar:/docker/bin/javalib/ngat_message_base.jar:/docker/bin/javalib/ngat_message_inst_dp.jar:/docker/bin/javalib/ngat_net.jar:/docker/bin/javalib/ngat_util_logging.jar:/docker/bin/javalib/ngat_util.jar:/docker/bin/dprt/java/"
+# Config files in /icc tree (external to the docker)
+# This expects the following config files:
+# /icc/bin/dprt/java/loci.dprt.properties
+# Logs levels are bitwise. libdprt_object reserves bits 16-24.
+# The DpRt java layer reserves bits 0-7 inclusive. (0 1 2 3) = 15
+# libdprt_object reserves bits 16-23 inclusive.
+# libdprt_rjs reserves bits 8-15 inclusive (currently unused).
+# 2^24 = 16777216
+# bits 1 to 23 set: 16777215
+WORKDIR /docker/bin/dprt/java/
+ENTRYPOINT java ngat.dprt.DpRt -log 16777215 -config /icc/bin/dprt/java/loci.dprt.properties 
