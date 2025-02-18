@@ -4,7 +4,11 @@ FROM openjdk:8
 #
 RUN mkdir -p /docker/bin/javalib
 RUN mkdir -p /docker/bin/lib/x86_64-linux
-RUN mkdir -p /docker/bin/dprt/java
+RUN mkdir -p /docker/bin/dprt/java/ngat/dprt/loci
+#
+# More work TODO on wcs_fit software
+#
+RUN mkdir -p /docker/wcs_fit/bin/
 # Required jars
 ADD /home/dev/bin/javalib/ngat_util_logging.jar /docker/bin/javalib/ngat_util_logging.jar
 ADD /home/dev/bin/javalib/ngat_util.jar /docker/bin/javalib/ngat_util.jar
@@ -15,7 +19,8 @@ ADD /home/dev/bin/javalib/ngat_message_base.jar /docker/bin/javalib/ngat_message
 #
 # Copy DpRt application into /docker/bin/dprt/java
 #
-ADD /home/dev/bin/dprt/java/*.class /docker/bin/dprt/java/
+ADD /home/dev/bin/dprt/java/ngat/dprt/*.class /docker/bin/dprt/java/ngat/dprt/
+ADD /home/dev/bin/dprt/java/ngat/dprt/loci/*.class /docker/bin/dprt/java/ngat/dprt/loci/
 #
 # Shared libraries
 # Note these should be built from source, this is really dodgy
