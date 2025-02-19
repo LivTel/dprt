@@ -16,6 +16,14 @@ if ( "${machine_name}" == "-help") then
 	echo "$0 <machine>"
 	exit 0
 endif
+switch ( ${machine_name} )
+    case "loci1":
+	set camera_name = "loci"
+	breaksw
+    default:
+	echo "Unknown machine ${machine_name}."
+	exit 1
+endsw
 # dev root directory
 set dev_dir 		= "~dev"
 # dev binary root directory
@@ -46,7 +54,7 @@ endif
 #
 echo "Creating directory structure..."
 set dir_count = 0
-set dir_list = "${deployment_dir} ${deployment_icc_dir} ${deployment_bin_dir} ${deployment_bin_dir}/dprt/java"
+set dir_list = "${deployment_dir} ${deployment_icc_dir} ${deployment_bin_dir} ${deployment_bin_dir}/dprt/java ${deployment_icc_dir}/Dprt/${camera_name} ${deployment_icc_dir}/Dprt/${camera_name}/Flat ${deployment_icc_dir}/Dprt/${camera_name}/Fringe ${deployment_icc_dir}/Dprt/${camera_name}/BadPix ${deployment_icc_dir}/Dprt/${camera_name}/Bias ${deployment_icc_dir}/Dprt/${camera_name}/Dark"
 foreach dir ( ${dir_list} )
 	mkdir -p ${dir}
 	if ($status != 0) then
