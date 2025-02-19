@@ -23,6 +23,12 @@ This is the Java layer of the real time data pipeline, the C layer is in libdprt
   * ngat_message_inst_dp.jar
   * ngat_message_base.jar
 * The software can only be built from within an LT development environment
+* The DpRt calls the underlying libdprt routines to do the actual data reduction, in the [libdprt](https://github.com/LivTel/libdprt) repository. Specifically, the following sub-module libraries must be present:
+  * libdprt_jni_general.so
+  * libdprt_object.so
+  * An instrument specific version of the [ccd_dprt](https://github.com/LivTel/ccd_dprt) sub-module i.e. libloci_ccd_dprt.so
+  * The instrument specific libdprt JNI interface between the instrument specific DpRtLibrary instance and the instrument specific ccd_dprt build i.e. libdprt_loci.so
+* libdprt depends on the [lt_filenames](http://github.com/LivTel/lt_filenames) repository for filename support.
 
 ## Deployment
 
