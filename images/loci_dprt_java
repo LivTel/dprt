@@ -25,6 +25,7 @@ ADD /home/dev/bin/dprt/java/ngat/dprt/loci/*.class /docker/bin/dprt/java/ngat/dp
 # Shared libraries
 # Note these should be built from source, this is really dodgy
 #
+ADD /home/dev/bin/lib/x86_64-linux/libcfitsio.so /docker/bin/lib/x86_64-linux/libcfitsio.so
 ADD /home/dev/bin/lib/x86_64-linux/libdprt_jni_general.so /docker/bin/lib/x86_64-linux/libdprt_jni_general.so
 ADD /home/dev/bin/lib/x86_64-linux/libdprt_object.so /docker/bin/lib/x86_64-linux/libdprt_object.so
 ADD /home/dev/bin/lib/x86_64-linux/liblt_filenames.so /docker/bin/lib/x86_64-linux/liblt_filenames.so
