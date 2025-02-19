@@ -38,6 +38,8 @@ ADD /home/dev/bin/lib/x86_64-linux/libdprt_loci.so /docker/bin/lib/x86_64-linux/
 EXPOSE 6880
 # Setup CLASSPATH
 ENV CLASSPATH="/docker/bin/javalib/ngat_fits.jar:/docker/bin/javalib/ngat_message_base.jar:/docker/bin/javalib/ngat_message_inst_dp.jar:/docker/bin/javalib/ngat_net.jar:/docker/bin/javalib/ngat_util_logging.jar:/docker/bin/javalib/ngat_util.jar:/docker/bin/dprt/java/"
+# Setup LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/docker/bin/lib/x86_64-linux/:."
 # Config files in /icc tree (external to the docker)
 # This expects the following config files:
 # /icc/bin/dprt/java/dprt.properties
