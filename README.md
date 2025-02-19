@@ -26,15 +26,17 @@ This is the Java layer of the real time data pipeline, the C layer is in libdprt
 * The DpRt calls the underlying libdprt routines to do the actual data reduction, in the [libdprt](https://github.com/LivTel/libdprt) repository. Specifically, the following sub-module libraries must be present:
   * libdprt_jni_general.so
   * libdprt_object.so
+  * libdprt_libfits.so
   * An instrument specific version of the [ccd_dprt](https://github.com/LivTel/ccd_dprt) sub-module i.e. libloci_ccd_dprt.so
   * The instrument specific libdprt JNI interface between the instrument specific DpRtLibrary instance and the instrument specific ccd_dprt build i.e. libdprt_loci.so
 * libdprt depends on the [lt_filenames](http://github.com/LivTel/lt_filenames) repository for filename support.
+* libdprt uses CFITSIO for accessing FITS images. The same version of CFITSIO compiled against libdprt_libfits.so / ccd_dprt must be used.
 
 ## Deployment
 
 The data pipeline is usually deployed along with the instrument control software, and the deployment instructions can usually be found within the instrument deployment scripts. This is true of [IO:O](https://github.com/LivTel/ioo/blob/master/scripts/o_make_deployment) and [Sprat](https://github.com/LivTel/sprat/blob/master/scripts/sprat_make_deployment) for instance.
 
-The real time data pipeline has been deployed indepenently in the past on it's own data reduction machine. See [dprt_make_deployment](scripts/dprt_make_deployment) for this deployment mechanism.
+The real time data pipeline has been deployed independently in the past on it's own data reduction machine. See [dprt_make_deployment](scripts/dprt_make_deployment) for this deployment mechanism.
 
 For LOCI we are trying to dockerise the DpRt into a docker container. See the [images](images) directory for details.
 

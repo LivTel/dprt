@@ -2,6 +2,8 @@
 
 This directory contains a Dockerfile for building a DpRt docker container. Rather than deploying the software as a series of jar's in a tarball, we create a docker container and export that to the control computer.
 
+TODO : wcs_fit deployment.
+
 ## Deployment
 
 ### DpRt docker
