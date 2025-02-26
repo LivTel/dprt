@@ -75,7 +75,7 @@ Find the **loci-dprt** container id and then do the following:
 
 You need to remove the container to re-use the loci-dprt container name.
 
-### Command line test propgram
+### Command line test programs
 
 The DpRt usually ships with a suite of command line test programs. A few of these are now included in the DpRt image and can be invoked, using a separate instance of the loci_dprt_java_image container with an alternate command line (and entry-point).
 
