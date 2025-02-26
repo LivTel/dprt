@@ -90,12 +90,12 @@ For example, to reduce an exposure:
 * **sudo docker run --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --entrypoint /bin/bash -it loci_dprt_java_image**
 * Inside the created container shell, type the following:
 * **cd /docker/bin/libdprt/test/x86_64-linux/**
-* **/docker/bin/libdprt/test/x86_64-linux/dprt_test -e /data/k_b_20250225_1_1_1_0.fits**
+* **/docker/bin/libdprt/test/x86_64-linux/dprt_test -e /data/k_e_20250127_12_1_1_0.fits**
 
 This can all be done as a single command as follows:
 
 * **ssh admin@loci1**
-* **sudo docker run --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --entrypoint /bin/bash -it loci_dprt_java_image -c "cd /docker/bin/libdprt/test/x86_64-linux/ ; /docker/bin/libdprt/test/x86_64-linux/dprt_test -e /data/k_b_20250225_1_1_1_0.fits"**
+* **sudo docker run --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --entrypoint /bin/bash -it loci_dprt_java_image -c "cd /docker/bin/libdprt/test/x86_64-linux/ ; /docker/bin/libdprt/test/x86_64-linux/dprt_test -e /data/k_e_20250127_12_1_1_0.fits"**
 
 We need the /icc mount to access the soft-linked dprt.properties, and the /data mount to access the data.
 We have to run dprt_test from it's own directory as it tries to load './dprt.properties' for configuration, that is now in /docker/bin/libdprt/test/x86_64-linux/ as a soft-link to the (external to docker) /icc config file. Note everything after and including the '-c' is actually command line arguments to the entrypoint (/bin/bash in the above case).
