@@ -74,3 +74,29 @@ Find the **loci-dprt** container id and then do the following:
 * **sudo docker remove &lt;containerid&gt;**
 
 You need to remove the container to re-use the loci-dprt container name.
+
+### Command line test programs
+
+The DpRt usually ships with a suite of command line test programs. A few of these are now included in the DpRt image and can be invoked, using a separate instance of the loci_dprt_java_image container with an alternate command line (and entry-point).
+
+#### SendDpRtCommand
+
+#### dprt_test
+
+'dprt_test' is a C layer program that can be used to invoke the core libdprt data reduction routines on FITS images.
+For example, to reduce an exposure:
+
+* **ssh admin@loci1**
+* **sudo docker run --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --entrypoint /bin/bash -it loci_dprt_java_image**
+* Inside the created container shell, type the following:
+* **cd /docker/bin/libdprt/test/x86_64-linux/**
+* **/docker/bin/libdprt/test/x86_64-linux/dprt_test -e /data/k_e_20250127_12_1_1_0.fits**
+
+This can all be done as a single command as follows:
+
+* **ssh admin@loci1**
+* **sudo docker run --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --entrypoint /bin/bash -it loci_dprt_java_image -c "cd /docker/bin/libdprt/test/x86_64-linux/ ; /docker/bin/libdprt/test/x86_64-linux/dprt_test -e /data/k_e_20250127_12_1_1_0.fits"**
+
+We need the /icc mount to access the soft-linked dprt.properties, and the /data mount to access the data.
+We have to run dprt_test from it's own directory as it tries to load './dprt.properties' for configuration, that is now in /docker/bin/libdprt/test/x86_64-linux/ as a soft-link to the (external to docker) /icc config file. Note everything after and including the '-c' is actually command line arguments to the entrypoint (/bin/bash in the above case).
+

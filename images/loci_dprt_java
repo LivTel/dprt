@@ -5,6 +5,9 @@ FROM openjdk:8
 RUN mkdir -p /docker/bin/javalib
 RUN mkdir -p /docker/bin/lib/x86_64-linux
 RUN mkdir -p /docker/bin/dprt/java/ngat/dprt/loci
+# Install test programs as well.
+RUN mkdir -p /docker/bin/dprt/test
+RUN mkdir -p /docker/bin/libdprt/test/x86_64-linux
 #
 # More work TODO on wcs_fit software
 #
@@ -21,6 +24,8 @@ ADD /home/dev/bin/javalib/ngat_message_base.jar /docker/bin/javalib/ngat_message
 #
 ADD /home/dev/bin/dprt/java/ngat/dprt/*.class /docker/bin/dprt/java/ngat/dprt/
 ADD /home/dev/bin/dprt/java/ngat/dprt/loci/*.class /docker/bin/dprt/java/ngat/dprt/loci/
+# Install test programs as well.
+ADD /home/dev/bin/dprt/test/*.class /docker/bin/dprt/test/
 #
 # Shared libraries
 # Note these should be built from source, this is really dodgy
@@ -32,6 +37,12 @@ ADD /home/dev/bin/lib/x86_64-linux/liblt_filenames.so /docker/bin/lib/x86_64-lin
 ADD /home/dev/bin/lib/x86_64-linux/libloci_ccd_dprt.so /docker/bin/lib/x86_64-linux/libloci_ccd_dprt.so
 ADD /home/dev/bin/lib/x86_64-linux/libdprt_libfits.so /docker/bin/lib/x86_64-linux/libdprt_libfits.so
 ADD /home/dev/bin/lib/x86_64-linux/libdprt_loci.so /docker/bin/lib/x86_64-linux/libdprt_loci.so
+#
+# libdprt test program
+#
+ADD /home/dev/bin/libdprt/loci/test/x86_64-linux/dprt_test /docker/bin/libdprt/test/x86_64-linux/dprt_test
+# Soft-link the external dprt.properties config file into this directory
+RUN ln -s /icc/bin/dprt/java/dprt.properties /docker/bin/libdprt/test/x86_64-linux/dprt.properties
 #
 # EXPOSE ports
 #
