@@ -1,0 +1,30 @@
+#!/bin/tcsh
+set current_directory = `pwd`
+set oss_directory = `dirname ${current_directory}`
+mkdir -p docker/bin/javalib/
+mkdir -p docker/bin/lib/x86_64-linux
+mkdir -p docker/bin/dprt/java/ngat/dprt/loci
+mkdir -p docker/bin/dprt/test
+mkdir -p docker/bin/libdprt/test/x86_64-linux
+# javalib
+cp /home/dev/bin/javalib/ngat_util_logging.jar docker/bin/javalib/
+cp /home/dev/bin/javalib/ngat_util.jar docker/bin/javalib/
+cp /home/dev/bin/javalib/ngat_net.jar docker/bin/javalib/
+cp /home/dev/bin/javalib/ngat_fits.jar docker/bin/javalib/
+cp /home/dev/bin/javalib/ngat_message_inst_dp.jar docker/bin/javalib/
+cp /home/dev/bin/javalib/ngat_message_base.jar docker/bin/javalib/
+# DpRt class files
+cp /home/dev/bin/dprt/java/ngat/dprt/*.class docker/bin/dprt/java/ngat/dprt/
+cp /home/dev/bin/dprt/java/ngat/dprt/loci/*.class docker/bin/dprt/java/ngat/dprt/loci/
+# DpRt test programs
+cp /home/dev/bin/dprt/test/*.class docker/bin/dprt/test/
+# shared libraries
+cp /home/dev/bin/lib/x86_64-linux/libcfitsio.so docker/bin/lib/x86_64-linux/
+cp /home/dev/bin/lib/x86_64-linux/libdprt_jni_general.so docker/bin/lib/x86_64-linux/
+cp /home/dev/bin/lib/x86_64-linux/libdprt_object.so docker/bin/lib/x86_64-linux/
+cp /home/dev/bin/lib/x86_64-linux/liblt_filenames.so docker/bin/lib/x86_64-linux/
+cp /home/dev/bin/lib/x86_64-linux/libloci_ccd_dprt.so docker/bin/lib/x86_64-linux/
+cp /home/dev/bin/lib/x86_64-linux/libdprt_libfits.so docker/bin/lib/x86_64-linux/
+cp /home/dev/bin/lib/x86_64-linux/libdprt_loci.so docker/bin/lib/x86_64-linux/
+# libdprt test program
+cp /home/dev/bin/libdprt/loci/test/x86_64-linux/dprt_test docker/bin/libdprt/test/x86_64-linux/

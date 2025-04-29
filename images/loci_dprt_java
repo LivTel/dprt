@@ -13,34 +13,35 @@ RUN mkdir -p /docker/bin/libdprt/test/x86_64-linux
 #
 RUN mkdir -p /docker/wcs_fit/bin/
 # Required jars
-ADD /home/dev/bin/javalib/ngat_util_logging.jar /docker/bin/javalib/ngat_util_logging.jar
-ADD /home/dev/bin/javalib/ngat_util.jar /docker/bin/javalib/ngat_util.jar
-ADD /home/dev/bin/javalib/ngat_net.jar /docker/bin/javalib/ngat_net.jar
-ADD /home/dev/bin/javalib/ngat_fits.jar /docker/bin/javalib/ngat_fits.jar
-ADD /home/dev/bin/javalib/ngat_message_inst_dp.jar /docker/bin/javalib/ngat_message_inst_dp.jar
-ADD /home/dev/bin/javalib/ngat_message_base.jar /docker/bin/javalib/ngat_message_base.jar
+# These should already exist in docker/bin/javalib/  in the images directory, if provision_dprt has been run
+ADD docker/bin/javalib/ngat_util_logging.jar /docker/bin/javalib/ngat_util_logging.jar
+ADD docker/bin/javalib/ngat_util.jar /docker/bin/javalib/ngat_util.jar
+ADD docker/bin/javalib/ngat_net.jar /docker/bin/javalib/ngat_net.jar
+ADD docker/bin/javalib/ngat_fits.jar /docker/bin/javalib/ngat_fits.jar
+ADD docker/bin/javalib/ngat_message_inst_dp.jar /docker/bin/javalib/ngat_message_inst_dp.jar
+ADD docker/bin/javalib/ngat_message_base.jar /docker/bin/javalib/ngat_message_base.jar
 #
 # Copy DpRt application into /docker/bin/dprt/java
 #
-ADD /home/dev/bin/dprt/java/ngat/dprt/*.class /docker/bin/dprt/java/ngat/dprt/
-ADD /home/dev/bin/dprt/java/ngat/dprt/loci/*.class /docker/bin/dprt/java/ngat/dprt/loci/
+ADD docker/bin/dprt/java/ngat/dprt/*.class /docker/bin/dprt/java/ngat/dprt/
+ADD docker/bin/dprt/java/ngat/dprt/loci/*.class /docker/bin/dprt/java/ngat/dprt/loci/
 # Install test programs as well.
-ADD /home/dev/bin/dprt/test/*.class /docker/bin/dprt/test/
+ADD docker/bin/dprt/test/*.class /docker/bin/dprt/test/
 #
 # Shared libraries
 # Note these should be built from source, this is really dodgy
 #
-ADD /home/dev/bin/lib/x86_64-linux/libcfitsio.so /docker/bin/lib/x86_64-linux/libcfitsio.so
-ADD /home/dev/bin/lib/x86_64-linux/libdprt_jni_general.so /docker/bin/lib/x86_64-linux/libdprt_jni_general.so
-ADD /home/dev/bin/lib/x86_64-linux/libdprt_object.so /docker/bin/lib/x86_64-linux/libdprt_object.so
-ADD /home/dev/bin/lib/x86_64-linux/liblt_filenames.so /docker/bin/lib/x86_64-linux/liblt_filenames.so
-ADD /home/dev/bin/lib/x86_64-linux/libloci_ccd_dprt.so /docker/bin/lib/x86_64-linux/libloci_ccd_dprt.so
-ADD /home/dev/bin/lib/x86_64-linux/libdprt_libfits.so /docker/bin/lib/x86_64-linux/libdprt_libfits.so
-ADD /home/dev/bin/lib/x86_64-linux/libdprt_loci.so /docker/bin/lib/x86_64-linux/libdprt_loci.so
+ADD docker/bin/lib/x86_64-linux/libcfitsio.so /docker/bin/lib/x86_64-linux/libcfitsio.so
+ADD docker/bin/lib/x86_64-linux/libdprt_jni_general.so /docker/bin/lib/x86_64-linux/libdprt_jni_general.so
+ADD docker/bin/lib/x86_64-linux/libdprt_object.so /docker/bin/lib/x86_64-linux/libdprt_object.so
+ADD docker/bin/lib/x86_64-linux/liblt_filenames.so /docker/bin/lib/x86_64-linux/liblt_filenames.so
+ADD docker/bin/lib/x86_64-linux/libloci_ccd_dprt.so /docker/bin/lib/x86_64-linux/libloci_ccd_dprt.so
+ADD docker/bin/lib/x86_64-linux/libdprt_libfits.so /docker/bin/lib/x86_64-linux/libdprt_libfits.so
+ADD docker/bin/lib/x86_64-linux/libdprt_loci.so /docker/bin/lib/x86_64-linux/libdprt_loci.so
 #
 # libdprt test program
 #
-ADD /home/dev/bin/libdprt/loci/test/x86_64-linux/dprt_test /docker/bin/libdprt/test/x86_64-linux/dprt_test
+ADD docker/bin/libdprt/test/x86_64-linux/dprt_test /docker/bin/libdprt/test/x86_64-linux/dprt_test
 # Soft-link the external dprt.properties config file into this directory
 RUN ln -s /icc/bin/dprt/java/dprt.properties /docker/bin/libdprt/test/x86_64-linux/dprt.properties
 #
