@@ -13,7 +13,7 @@ Currently the DpRt docker is only available for the LOCI data pipeline (which is
 To build a docker container do the following (on an LT development machine, where the DpRt software repository is installed at /home/dev/src/dprt) :
 
 * **cd ~dev/src/dprt/images** (i.e. this directory)
-* **./provision_dprt** Run the provisioning script, which copies the Java libraries from /home/dev/bin/javalib, the DpRt class files from /home/dev/bin/dprt/java/ngat/dprt, and the C libraries from /home/dev/bin/lib/x86_64-linux/, into a created **docker** directory tree (created in the images directory. This allows us to use a local context for the docker build.
+* **./provision_dprt** Run the provisioning script, which copies the Java libraries from /home/dev/bin/javalib, the DpRt class files from /home/dev/bin/dprt/java/ngat/dprt, and the C libraries from /home/dev/bin/lib/x86_64-linux/, into a created **docker** directory tree (created in the images directory). This allows us to use a local context for the docker build.
 * **docker build -f loci_dprt_java -t loci_dprt_java_image .** Build the docker container from the **loci_dprt_java** file.
 * **docker save -o loci_dprt_java_image.tar loci_dprt_java_image** Save the constructed docker container into the **loci_dprt_java_image.tar** tarball.
 
