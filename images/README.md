@@ -23,7 +23,7 @@ The docker can then be installed / loaded into the local system as follows:
 
 * ssh into machine
 * **cd images**
-* **sudo docker load -i loci_dprt_java_image.tar**
+* **docker load -i loci_dprt_java_image.tar**
 
 You now need to install the Loci DpRt config files before starting the docker.
 
@@ -50,7 +50,7 @@ Then install the config tarball as follows:
 
 The Loci DpRt can then be started as follows:
 
-* **sudo docker run -p 6880:6880 --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --name=loci-dprt -it -d --restart unless-stopped loci_dprt_java_image**
+* **docker run -p 6880:6880 --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --name=loci-dprt -it -d --restart unless-stopped loci_dprt_java_image**
 
 For this to work the Loci DpRt config files need to have been installed under **/icc** first. 
 
