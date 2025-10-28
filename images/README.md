@@ -82,6 +82,16 @@ The DpRt usually ships with a suite of command line test programs. A few of thes
 
 #### SendDpRtCommand
 
+* **ssh user@loci1**
+* **docker run --mount type=bind,src=/icc,dst=/icc --mount type=bind,src=/data,dst=/data --entrypoint /bin/bash -it loci_dprt_java_image**
+* Inside the created container shell, type the following:
+* **cd /docker/bin/dprt/test**
+* **export CLASSPATH="${CLASSPATH}:."**
+* Help command: **java SendDpRtCommand -help**
+* Example data reduction: **java SendDpRtCommand -ip 192.168.1.28 -dprtport 6880 -expose /data/k_e_20251027_7_1_1_0.fits**
+
+Note the FITS image to reduce has to be in /data, to access the directory the FITS image data is in (as we are running SendDpRtCommand inside a docker). Both SendDpRtCommand and the DpRt itself will have to access the data.
+
 #### dprt_test
 
 'dprt_test' is a C layer program that can be used to invoke the core libdprt data reduction routines on FITS images.
