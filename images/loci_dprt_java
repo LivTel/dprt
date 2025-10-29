@@ -1,4 +1,9 @@
-FROM openjdk:8
+FROM eclipse-temurin:8-noble
+# We now need a docker image with Java 8, and libc6-2.39,
+# to use the JNI code compiled on ltdevx64 (Ubuntu 24.04 / noble)
+# openjdk dockers no longer supported (and glibc is too old), eclipse-temurin is a valid replacement
+# 8-noble is Java 8 running on a noble (Ubuntu 24.04) base.
+#FROM openjdk:8
 #
 # Setup directory structure
 #
