@@ -16,9 +16,9 @@ The DpRt docker is instrument specific due to the config file, and libdprt share
 To build a docker container do the following (on an LT development machine, where the DpRt software repository is installed at /home/dev/src/dprt) :
 
 * **cd ~dev/src/dprt/images** (i.e. this directory)
-* **./provision_dprt <instrument name>** Run the provisioning script, which copies the Java libraries from /home/dev/bin/javalib, the DpRt class files from /home/dev/bin/dprt/java/ngat/dprt, and the C libraries from /home/dev/bin/lib/x86_64-linux/, into a created **docker** directory tree (created in the images directory). This allows us to use a local context for the docker build.
-* **docker build -f <instrument name>_dprt_java -t <instrument name>_dprt_java_image .** Build the docker container from the **<instrument name>_dprt_java** file.
-* **docker save -o <instrument name>_dprt_java_image.tar <instrument name>_dprt_java_image** Save the constructed docker container into the **<instrument name>_dprt_java_image.tar** tarball.
+* **./provision_dprt \<instrument name\>** Run the provisioning script, which copies the Java libraries from /home/dev/bin/javalib, the DpRt class files from /home/dev/bin/dprt/java/ngat/dprt, and the C libraries from /home/dev/bin/lib/x86_64-linux/, into a created **docker** directory tree (created in the images directory). This allows us to use a local context for the docker build.
+* **docker build -f \<instrument name\>_dprt_java -t \<instrument name\>_dprt_java_image .** Build the docker container from the **\<instrument name\>_dprt_java** file.
+* **docker save -o \<instrument name\>_dprt_java_image.tar \<instrument name\>_dprt_java_image** Save the constructed docker container into the **\<instrument name\>_dprt_java_image.tar** tarball.
 
 e.g. for LOCI:
 * **cd ~dev/src/dprt/images**
