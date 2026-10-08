@@ -20,6 +20,9 @@ switch ( ${machine_name} )
     case "loci1":
 	set camera_name = "loci"
 	breaksw
+    case "lumen1":
+	set camera_name = "lumen"
+	breaksw
     default:
 	echo "Unknown machine ${machine_name}."
 	exit 1

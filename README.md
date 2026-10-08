@@ -38,7 +38,7 @@ The data pipeline is usually deployed along with the instrument control software
 
 The real time data pipeline has been deployed independently in the past on it's own data reduction machine. See [dprt_make_deployment](scripts/dprt_make_deployment) for this deployment mechanism.
 
-For LOCI we are trying to dockerise the DpRt into a docker container. See the [images](images) directory for details.
+For LOCI and LUMEN we are trying to dockerise the DpRt into a docker container. See the [images](images) directory for details.
 
 At times the wcs_fit script and associated sub-scripts have been deployed separately, see  [wcs_fit_make_deployment](scripts/wcs_fit_make_deployment).
 

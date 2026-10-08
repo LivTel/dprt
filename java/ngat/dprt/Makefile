@@ -25,11 +25,12 @@ CONFIG_SRCS	= ltccd1.dprt.properties ltccd2.dprt.properties ltccd3.dprt.properti
 		datared.ratcam.dprt.properties datared.o.dprt.properties \
 		frodospec1.frodospec.dprt.properties frodospec1.sprat.dprt.properties sprat1.sprat.dprt.properties \
 		ioi1.sprat.dprt.properties ioi1.ioi.dprt.properties \
-		loci1.dprt.properties ltdevx64.loci.dprt.properties
+		loci1.dprt.properties ltdevx64.loci.dprt.properties \
+		lumen1.dprt.properties ltdevx64.lumen.dprt.properties
 #ioi1.dprt.properties frodospec1.dprt.properties sprat1.dprt.properties 
 CONFIG_OBJS	= $(CONFIG_SRCS:%.properties=$(CONFIG_BINDIR)/%.properties)
 
-DIRS 		= ccs scs supircam ftspec grope frodospec o rise thor ioi sprat loci
+DIRS 		= ccs scs supircam ftspec grope frodospec o rise thor ioi sprat loci lumen
 
 top: $(OBJS) config
 	@for i in $(DIRS); \
